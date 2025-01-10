@@ -544,7 +544,7 @@ export type Database = {
             foreignKeyName: "game_round_id_fkey"
             columns: ["round_id"]
             isOneToOne: false
-            referencedRelation: "round"
+            referencedRelation: "rounds"
             referencedColumns: ["id"]
           },
         ]
@@ -576,7 +576,7 @@ export type Database = {
             foreignKeyName: "hole_round_id_fkey"
             columns: ["round_id"]
             isOneToOne: false
-            referencedRelation: "round"
+            referencedRelation: "rounds"
             referencedColumns: ["id"]
           },
         ]
@@ -632,73 +632,76 @@ export type Database = {
         }
         Relationships: []
       }
-      round: {
+      rounds: {
         Row: {
           course_id: number
           created_at: string
           id: number
-          name: string | null
         }
         Insert: {
           course_id: number
           created_at?: string
           id?: number
-          name?: string | null
         }
         Update: {
           course_id?: number
           created_at?: string
           id?: number
-          name?: string | null
         }
         Relationships: [
           {
             foreignKeyName: "round_course_id_fkey"
             columns: ["course_id"]
             isOneToOne: false
-            referencedRelation: "course"
-            referencedColumns: ["id"]
+            referencedRelation: "courses"
+            referencedColumns: ["CourseID"]
           },
         ]
       }
-      score: {
+      scores: {
         Row: {
           created_at: string
-          game_id: number
-          hole_id: number
+          hole: number | null
           id: number
+          player: string | null
           puts: number | null
+          round_id: number
           score: number | null
+          tee_id: number
         }
         Insert: {
           created_at?: string
-          game_id: number
-          hole_id: number
+          hole?: number | null
           id?: number
+          player?: string | null
           puts?: number | null
+          round_id: number
           score?: number | null
+          tee_id: number
         }
         Update: {
           created_at?: string
-          game_id?: number
-          hole_id?: number
+          hole?: number | null
           id?: number
+          player?: string | null
           puts?: number | null
+          round_id?: number
           score?: number | null
+          tee_id?: number
         }
         Relationships: [
           {
-            foreignKeyName: "score_game_id_fkey"
-            columns: ["game_id"]
+            foreignKeyName: "scores_hole_id_fkey"
+            columns: ["tee_id"]
             isOneToOne: false
-            referencedRelation: "game"
-            referencedColumns: ["id"]
+            referencedRelation: "tees"
+            referencedColumns: ["TeeID"]
           },
           {
-            foreignKeyName: "score_hole_id_fkey"
-            columns: ["hole_id"]
+            foreignKeyName: "scores_round_id_fkey"
+            columns: ["round_id"]
             isOneToOne: false
-            referencedRelation: "hole"
+            referencedRelation: "rounds"
             referencedColumns: ["id"]
           },
         ]

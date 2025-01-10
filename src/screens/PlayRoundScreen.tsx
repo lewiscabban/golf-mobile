@@ -1,63 +1,62 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
-import HoleModal from '../components/HoleModal';
-import { useNavigation } from '@react-navigation/native'; // Import useNavigation
-import { NativeStackNavigationProp } from '@react-navigation/native-stack'; // Import this
+import React, { useEffect, useState } from 'react';
+import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import { NavigationProp, useNavigation, useRoute } from '@react-navigation/native';
+import { supabase } from '../supabase/supabaseClient';
+import { RoundsRow } from '../types/supabase';
 
-import { RootStackParamList } from '../types/navigation'; // Import navigation types
-
-type PlayRoundScreenNavigationProp = NativeStackNavigationProp<
-  RootStackParamList,
-  'PlayRound'
->; // Define the navigation prop type for PlayRoundScreen
+type ProfileStackParamList = {
+    PlayRound: { RoundID: number };
+  };
 
 const PlayRoundScreen = () => {
-  const navigation = useNavigation<PlayRoundScreenNavigationProp>(); // Apply the navigation type
-  const [modalVisible, setModalVisible] = useState(false);
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+    const navigation = useNavigation<NavigationProp<ProfileStackParamList>>();
+    const route = useRoute();
+    const { RoundID } = route.params as { RoundID: number };
 
-  const handleButtonPress = (index: number) => {
-    setSelectedIndex(index);
-    setModalVisible(true);
-  };
+  const [roundData, setRoundData] = useState<RoundsRow | undefined>(undefined);
+  const [loading, setLoading] = useState(true);
 
-  const handleCloseModal = () => {
-    setModalVisible(false);
-    setSelectedIndex(null);
-  };
+  useEffect(() => {
+    // Fetch the round data
+    const fetchRoundData = async () => {
+      setLoading(true);
+        console.log(RoundID)
+      const { data, error } = await supabase
+        .from('rounds')
+        .select('*')
+        .eq('id', RoundID)
+        .single();
 
-  const handleFinish = () => {
-    navigation.navigate('Results'); // Now navigation should work correctly
-  };
+      if (error) {
+        console.error('Error fetching round data:', error);
+      } else {
+        setRoundData(data);
+      }
+
+      setLoading(false);
+    };
+
+    fetchRoundData();
+  }, [RoundID]);
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color="#0000ff" />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Play Round</Text>
-
-      {/* Scrollable list of buttons */}
-      <ScrollView contentContainerStyle={styles.scrollView}>
-        {Array.from({ length: 18 }, (_, index) => (
-          <TouchableOpacity
-            key={index}
-            style={styles.button}
-            onPress={() => handleButtonPress(index + 1)}
-          >
-            <Text style={styles.buttonText}>Hole {index + 1}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-
-      {/* Hole Modal */}
-      <HoleModal
-        visible={modalVisible}
-        holeNumber={selectedIndex}
-        onClose={handleCloseModal}
-      />
-
-      {/* Finish Button */}
-      <TouchableOpacity style={styles.finishButton} onPress={handleFinish}>
-        <Text style={styles.finishButtonText}>Finish Round</Text>
-      </TouchableOpacity>
+      {roundData ? (
+        <View style={styles.info}>
+          <Text>Club ID: {roundData?.id}</Text>
+        </View>
+      ) : (
+        <Text>No data found for this round.</Text>
+      )}
     </View>
   );
 };
@@ -65,49 +64,17 @@ const PlayRoundScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'flex-start', // Keeps the content at the top (so buttons can scroll)
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    padding: 16,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 16,
   },
-  button: {
-    backgroundColor: '#4CAF50',
-    padding: 12,
-    marginVertical: 6,
-    width: '100%',
-    alignItems: 'center',
-    borderRadius: 6,
-  },
-  buttonText: {
-    color: '#FFF',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  scrollView: {
-    flexGrow: 1,
-    justifyContent: 'center',  // Centers the buttons in case there are fewer than 18 buttons
-    width: '100%',
-  },
-  finishButton: {
-    backgroundColor: '#FF5733',  // Red or any color you like for the finish button
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 6,
-    marginTop: 20,
-    marginBottom: 20,  // Adds space between the button and the bottom edge
-    // position: 'absolute',  // Position it at the bottom of the screen
-    bottom: 20,  // Adjust the distance from the bottom edge
-    left: '10%',
-    right: '10%',
-  },
-  finishButtonText: {
-    color: '#FFF',
-    fontSize: 18,
-    fontWeight: '600',
+  info: {
+    marginTop: 16,
   },
 });
 

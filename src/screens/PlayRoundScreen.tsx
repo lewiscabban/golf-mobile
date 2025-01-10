@@ -1,17 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
-import { NavigationProp, useNavigation, useRoute } from '@react-navigation/native';
+import { View, Text, ActivityIndicator, StyleSheet, Button, Alert } from 'react-native';
+import { NavigationProp, useNavigation, useRoute, StackActions } from '@react-navigation/native';
 import { supabase } from '../supabase/supabaseClient';
 import { RoundsRow } from '../types/supabase';
 
 type ProfileStackParamList = {
-    PlayRound: { RoundID: number };
-  };
+  Profile: undefined;
+  PlayRound: { RoundID: number };
+};
 
 const PlayRoundScreen = () => {
-    const navigation = useNavigation<NavigationProp<ProfileStackParamList>>();
-    const route = useRoute();
-    const { RoundID } = route.params as { RoundID: number };
+  const navigation = useNavigation<NavigationProp<ProfileStackParamList>>();
+  const route = useRoute();
+  const { RoundID } = route.params as { RoundID: number };
 
   const [roundData, setRoundData] = useState<RoundsRow | undefined>(undefined);
   const [loading, setLoading] = useState(true);
@@ -20,7 +21,6 @@ const PlayRoundScreen = () => {
     // Fetch the round data
     const fetchRoundData = async () => {
       setLoading(true);
-        console.log(RoundID)
       const { data, error } = await supabase
         .from('rounds')
         .select('*')
@@ -39,6 +39,35 @@ const PlayRoundScreen = () => {
     fetchRoundData();
   }, [RoundID]);
 
+  useEffect(() => {
+    // Add an "Exit" button to the navigation bar
+    navigation.setOptions({
+      headerRight: () => (
+        <Button
+          title="Exit"
+          onPress={() => {
+            Alert.alert('Exit Round', 'Are you sure you want to exit?', [
+              {
+                text: 'Cancel',
+                style: 'cancel',
+              },
+              {
+                text: 'Yes',
+                onPress: () => {
+                  // Reset the stack and navigate back to Profile
+                  navigation.reset({
+                    index: 0,
+                    routes: [{ name: 'Profile' }],
+                  });
+                },
+              },
+            ]);
+          }}
+        />
+      ),
+    });
+  }, [navigation]);
+
   if (loading) {
     return (
       <View style={styles.container}>
@@ -52,7 +81,7 @@ const PlayRoundScreen = () => {
       <Text style={styles.title}>Play Round</Text>
       {roundData ? (
         <View style={styles.info}>
-          <Text>Club ID: {roundData?.id}</Text>
+          <Text>Club ID: {roundData.id}</Text>
         </View>
       ) : (
         <Text>No data found for this round.</Text>

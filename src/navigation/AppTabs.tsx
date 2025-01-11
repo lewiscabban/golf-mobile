@@ -19,7 +19,7 @@ const ProfileStackScreen = () => {
         <ProfileStack.Screen name="Profile" component={ProfileScreen} />
         <ProfileStack.Screen name="Courses" component={CoursesScreen} />
         <ProfileStack.Screen name="AddPlayers" component={AddPlayersScreen} />
-        <ProfileStack.Screen name="PlayRound" component={PlayRoundScreen} />
+        <ProfileStack.Screen name="PlayRound" component={PlayRoundScreen} options={{headerLeft: () => null,}} />
         <ProfileStack.Screen name="Results" component={ResultsScreen} />
       </ProfileStack.Navigator>
     );

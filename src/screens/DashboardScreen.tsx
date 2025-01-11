@@ -12,25 +12,35 @@ const DashboardScreen = () => {
   const navigation = useNavigation<NavigationProp<DashboardStackParamList>>();
   const [rounds, setRounds] = useState<RoundsRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
+  // Function to fetch rounds from Supabase
+  const fetchRounds = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('rounds')
+      .select('*');
+
+    if (error) {
+      console.error('Error fetching rounds:', error);
+      Alert.alert('Error', 'Failed to fetch rounds. Please try again.');
+    } else {
+      setRounds(data || []);
+    }
+    setLoading(false);
+    setRefreshing(false); // Stop refreshing
+  };
+
+  // Use effect to fetch rounds when component mounts
   useEffect(() => {
-    const fetchRounds = async () => {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('rounds')
-        .select('*');
-
-      if (error) {
-        console.error('Error fetching rounds:', error);
-        Alert.alert('Error', 'Failed to fetch rounds. Please try again.');
-      } else {
-        setRounds(data || []);
-      }
-      setLoading(false);
-    };
-
     fetchRounds();
   }, []);
+
+  // Handle refresh when user pulls down on the list
+  const handleRefresh = async () => {
+    setRefreshing(true); // Start refreshing
+    await fetchRounds(); // Refetch data
+  };
 
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
@@ -44,7 +54,7 @@ const DashboardScreen = () => {
   const renderRound = ({ item }: { item: RoundsRow }) => (
     <TouchableOpacity
       style={styles.roundItem}
-      onPress={() => handleNavigateToPlayRound(item.id) }
+      onPress={() => handleNavigateToPlayRound(item.id)}
     >
       <Text style={styles.roundText}>Round ID: {item.id}</Text>
       <Text style={styles.roundText}>Course ID: {item.course_id}</Text>
@@ -71,6 +81,8 @@ const DashboardScreen = () => {
           keyExtractor={(item) => item.id.toString()}
           renderItem={renderRound}
           contentContainerStyle={styles.list}
+          onRefresh={handleRefresh} // Enable pull-to-refresh
+          refreshing={refreshing} // Show the refreshing indicator
         />
       )}
       <Button title="Logout" onPress={handleLogout} />

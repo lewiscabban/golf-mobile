@@ -1,29 +1,49 @@
-import React from 'react';
-import { View, Text, Button, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, Button, StyleSheet, TextInput } from 'react-native';
 import Modal from 'react-native-modal';
 
 type HoleModalProps = {
   visible: boolean;
   holeNumber: number | null;
   onClose: () => void;
+  onSave: (holeNumber: number, newScore: number) => void; // Add onSave prop
 };
 
-const HoleModal: React.FC<HoleModalProps> = ({ visible, holeNumber, onClose }) => {
+const HoleModal: React.FC<HoleModalProps> = ({ visible, holeNumber, onClose, onSave }) => {
+  const [score, setScore] = useState<string>('');
+
+  const handleSave = () => {
+    if (holeNumber !== null && score) {
+      onSave(holeNumber, parseInt(score, 10));
+      setScore(''); // Reset score input
+    }
+  };
+
   return (
     <Modal
       isVisible={visible}
-      swipeDirection={['down']} // Allow swiping down to close
-      onSwipeComplete={onClose} // Close the modal when swiped
-      onBackdropPress={onClose} // Close when tapped outside
-      backdropColor="rgba(0, 0, 0, 0.5)" // Dim background color
-      backdropOpacity={0.7} // Make background dimmer
-      style={styles.modal} // Custom styling
+      swipeDirection={['down']}
+      onSwipeComplete={onClose}
+      onBackdropPress={onClose}
+      backdropColor="rgba(0, 0, 0, 0.5)"
+      backdropOpacity={0.7}
+      style={styles.modal}
     >
       <View style={styles.content}>
         <Text style={styles.text}>
-          {holeNumber ? `You clicked on Hole ${holeNumber}` : 'No hole selected'}
+          {holeNumber ? `Enter Score for Hole ${holeNumber}` : 'No hole selected'}
         </Text>
-        <Button title="Close" onPress={onClose} />
+        <TextInput
+          style={styles.input}
+          placeholder="Enter Score"
+          keyboardType="numeric"
+          value={score}
+          onChangeText={setScore}
+        />
+        <View style={styles.buttonRow}>
+          <Button title="Cancel" onPress={onClose} color="#888" />
+          <Button title="Save" onPress={handleSave} />
+        </View>
       </View>
     </Modal>
   );
@@ -31,22 +51,36 @@ const HoleModal: React.FC<HoleModalProps> = ({ visible, holeNumber, onClose }) =
 
 const styles = StyleSheet.create({
   modal: {
-    justifyContent: 'flex-end', // Place modal at the bottom
-    margin: 0, // Full screen width/height
+    justifyContent: 'flex-end',
+    margin: 0,
   },
   content: {
     backgroundColor: '#FFF',
-    padding: 30, // Increased padding for more space
+    padding: 30,
     borderRadius: 10,
     alignItems: 'center',
-    height: '70%',  // Adjust height (you can use a fixed value like 400 for a fixed height)
-    width: '100%',   // Set width to 100% of the screen
-    alignSelf: 'center', // Center the modal horizontally
+    height: '70%',
+    width: '100%',
+    alignSelf: 'center',
   },
   text: {
-    fontSize: 24,  // Larger font size for better visibility
+    fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 20, // More space between text and button
+    marginBottom: 20,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 5,
+    padding: 10,
+    width: '80%',
+    marginBottom: 20,
+    fontSize: 18,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '80%',
   },
 });
 

@@ -3,9 +3,11 @@ import { View, Text, Button, StyleSheet, FlatList, TouchableOpacity, Alert, Acti
 import { supabase } from '../supabase/supabaseClient';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { RoundsRow } from '../types/supabase';
+import { SafeAreaView } from 'react-native-safe-area-context';  // Import SafeAreaView
 
 type DashboardStackParamList = {
   ProfileStack: { screen: string; params: { RoundID: number } };
+  FriendRequests: undefined; // Define the FriendRequests screen
 };
 
 const DashboardScreen = () => {
@@ -42,15 +44,6 @@ const DashboardScreen = () => {
     await fetchRounds(); // Refetch data
   };
 
-  const handleLogout = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      Alert.alert('Logout Failed', error.message);
-    } else {
-      Alert.alert('Logged Out', 'You have been logged out successfully.');
-    }
-  };
-
   const renderRound = ({ item }: { item: RoundsRow }) => (
     <TouchableOpacity
       style={styles.roundItem}
@@ -69,10 +62,20 @@ const DashboardScreen = () => {
     });
   };
 
+  const navigateToFriendRequests = () => {
+    navigation.navigate('FriendRequests');
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Welcome to Your Dashboard!</Text>
       <Text style={styles.subtitle}>Track your golf scores and manage your account here.</Text>
+
+      {/* Button in the top-right */}
+      <TouchableOpacity onPress={navigateToFriendRequests} style={styles.friendRequestButton}>
+        <Text style={styles.friendRequestButtonText}>Friend Requests</Text>
+      </TouchableOpacity>
+
       {loading ? (
         <ActivityIndicator size="large" color="#0000ff" />
       ) : (
@@ -85,7 +88,6 @@ const DashboardScreen = () => {
           refreshing={refreshing} // Show the refreshing indicator
         />
       )}
-      <Button title="Logout" onPress={handleLogout} />
     </View>
   );
 };
@@ -94,6 +96,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
+    paddingTop: 50,
     backgroundColor: '#fff',
   },
   title: {
@@ -120,6 +123,19 @@ const styles = StyleSheet.create({
   roundText: {
     fontSize: 16,
     fontWeight: '500',
+  },
+  friendRequestButton: {
+    top: 16,
+    right: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: '#007AFF',
+    borderRadius: 8,
+    elevation: 5,
+  },
+  friendRequestButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
   },
 });
 

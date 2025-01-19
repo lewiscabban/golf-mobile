@@ -1,220 +1,263 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
-import { supabase } from '../supabase/supabaseClient';
-import { useNavigation } from '@react-navigation/native';
+import React, { useEffect, useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  Alert,
+  ActivityIndicator,
+  Modal,
+  TextInput,
+} from "react-native";
+import { supabase } from "../supabase/supabaseClient";
+import FriendRequestsModal from "../components/FriendRequestsModal";
+import AddFriendModal from "../components/AddFriendModal";
 
-const FriendRequestsScreen = () => {
-  const navigation = useNavigation();
-  const [friendRequests, setFriendRequests] = useState<any[]>([]);
+const FriendsScreen = () => {
+  const [friends, setFriends] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [addFriendModalVisible, setAddFriendModalVisible] = useState(false);
+  const [friendRequestsModalVisible, setFriendRequestsModalVisible] =
+    useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [friendRequests, setFriendRequests] = useState<any[]>([]);
 
-  // Fetch friend requests
-  const fetchFriendRequests = async () => {
+  // Fetch current friends
+  const fetchFriends = async () => {
     setLoading(true);
 
-    // Get the authenticated user
-    const { data, error: userError } = await supabase.auth.getUser();
-    
+    const { data: userData, error: userError } = await supabase.auth.getUser();
     if (userError) {
-      console.error('Error fetching user:', userError);
-      Alert.alert('Error', 'Failed to get user data.');
+      console.error("Error fetching user:", userError);
+      Alert.alert("Error", "Failed to get user data.");
       setLoading(false);
       return;
     }
 
-    // Ensure the user is not null
-    const user = data?.user;
+    const user = userData?.user;
     if (!user) {
-      console.error('No authenticated user found');
-      Alert.alert('Error', 'User not authenticated.');
+      console.error("No authenticated user found");
+      Alert.alert("Error", "User not authenticated.");
       setLoading(false);
       return;
     }
 
-    // Fetch friend requests for the logged-in user
-    const { data: requests, error } = await supabase
-      .from('friend_requests')
-      .select('*, sender_id, receiver_id')
-      .eq('receiver_id', user.id)  // Safely access user.id here
-      .eq('status', 'pending');  // Fetch only pending requests
+    const { data: friendsData, error } = await supabase
+      .from("friendships")
+      .select("*")
+      .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+      .neq("sender_id", user.id) // Adjust as needed
+      .neq("receiver_id", user.id); // Optional additional filtering
 
     if (error) {
-      console.error('Error fetching friend requests:', error);
-      Alert.alert('Error', 'Failed to fetch friend requests. Please try again.');
+      console.error("Error fetching friends:", error);
+      Alert.alert("Error", "Failed to fetch friends.");
     } else {
-      setFriendRequests(requests || []);
+      setFriends(friendsData || []);
     }
 
     setLoading(false);
-    setRefreshing(false); // Stop refreshing
+    setRefreshing(false);
   };
 
   useEffect(() => {
-    fetchFriendRequests();
+    fetchFriends();
   }, []);
 
-  // Handle refresh when user pulls down on the list
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await fetchFriendRequests(); // Refetch friend requests
-  };
+  const handleSearch = async () => {
+    if (!searchQuery) return;
 
-  // Accept friend request
-  const acceptRequest = async (requestId: number, senderId: string) => {
-    const { data, error: userError } = await supabase.auth.getUser();
-    
-    if (userError) {
-      console.error('Error fetching user:', userError);
-      Alert.alert('Error', 'Failed to get user data.');
-      return;
-    }
-  
-    const user = data?.user;
-    if (!user) {
-      console.error('No authenticated user found');
-      Alert.alert('Error', 'User not authenticated.');
-      return;
-    }
-  
-    // At this point, we know `user` is not null, and we can safely access `user.id`
-    const userId = user.id;
-  
-    // Update friend request status to 'accepted'
-    const { error: updateError } = await supabase
-      .from('friend_requests')
-      .update({ status: 'accepted' })
-      .eq('id', requestId);
-  
-    if (updateError) {
-      console.error('Error accepting friend request:', updateError);
-      Alert.alert('Error', 'Failed to accept friend request.');
-      return;
-    }
-  
-    // Create a new entry in the friends table
-    const { error: insertError } = await supabase
-      .from('friends')
-      .upsert([
-        { user_id: userId, friend_id: senderId },
-        { user_id: senderId, friend_id: userId },
-      ]);
-  
-    if (insertError) {
-      console.error('Error adding to friends list:', insertError);
-      Alert.alert('Error', 'Failed to add friend.');
-      return;
-    }
-  
-    Alert.alert('Success', 'Friend request accepted!');
-    fetchFriendRequests(); // Refresh the friend requests list
-  };
-
-  // Reject friend request
-  const rejectRequest = async (requestId: number) => {
-    // Delete the friend request
-    const { error } = await supabase
-      .from('friend_requests')
-      .delete()
-      .eq('id', requestId);
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id, username")
+      .ilike("username", `%${searchQuery}%`);
 
     if (error) {
-      console.error('Error rejecting friend request:', error);
-      Alert.alert('Error', 'Failed to reject friend request.');
+      console.error("Error searching users:", error);
+      Alert.alert("Error", "Failed to search users.");
+    } else {
+      setSearchResults(data || []);
+    }
+  };
+
+  const addFriend = async (friendId: string) => {
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    if (userError) {
+      console.error("Error fetching user:", userError);
+      Alert.alert("Error", "Failed to get user data.");
       return;
     }
 
-    Alert.alert('Success', 'Friend request rejected!');
-    fetchFriendRequests(); // Refresh the friend requests list
+    const user = userData?.user;
+    if (!user) {
+      console.error("No authenticated user found");
+      Alert.alert("Error", "User not authenticated.");
+      return;
+    }
+
+    const { error } = await supabase
+      .from("friendships")
+      .insert({ sender_id: user.id, receiver_id: friendId, status: "pending" });
+
+    if (error) {
+      console.error("Error sending friend request:", error);
+      Alert.alert("Error", "Failed to send friend request.");
+    } else {
+      Alert.alert("Success", "Friend request sent!");
+      setAddFriendModalVisible(false);
+    }
   };
 
-  const renderRequest = ({ item }: { item: any }) => (
-    <View style={styles.requestItem}>
-      <Text style={styles.requestText}>
-        Friend request from User ID: {item.sender_id}
-      </Text>
-      <View style={styles.buttonsContainer}>
-        <TouchableOpacity
-          style={styles.acceptButton}
-          onPress={() => acceptRequest(item.id, item.sender_id)}
-        >
-          <Text style={styles.buttonText}>Accept</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.rejectButton}
-          onPress={() => rejectRequest(item.id)}
-        >
-          <Text style={styles.buttonText}>Reject</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+  const fetchFriendRequests = async () => {
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    if (userError) {
+      console.error("Error fetching user:", userError);
+      Alert.alert("Error", "Failed to get user data.");
+      return;
+    }
+
+    const user = userData?.user;
+    if (!user) {
+      console.error("No authenticated user found");
+      Alert.alert("Error", "User not authenticated.");
+      return;
+    }
+
+    const { data: requests, error } = await supabase
+      .from("friendships")
+      .select("id, sender_id")
+      .eq("receiver_id", user.id)
+      .eq("status", "pending");
+
+    if (error) {
+      console.error("Error fetching friend requests:", error);
+      Alert.alert("Error", "Failed to fetch friend requests.");
+    } else {
+      setFriendRequests(requests || []);
+    }
+  };
+
+  const renderFriend = ({ item }: { item: any }) => (
+    <Text style={styles.friendText}>Friend ID: {item.friend_id}</Text>
+  );
+
+  const renderSearchResult = ({ item }: { item: any }) => (
+    <TouchableOpacity
+      style={styles.searchResultItem}
+      onPress={() => addFriend(item.id)}
+    >
+      <Text style={styles.searchResultText}>{item.username}</Text>
+    </TouchableOpacity>
+  );
+
+  const renderFriendRequest = ({ item }: { item: any }) => (
+    <Text style={styles.friendRequestText}>Request from: {item.sender_id}</Text>
   );
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Friend Requests</Text>
+      <Text style={styles.title}>My Friends</Text>
       {loading ? (
         <ActivityIndicator size="large" color="#0000ff" />
       ) : (
         <FlatList
-          data={friendRequests}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={renderRequest}
-          contentContainerStyle={styles.list}
-          onRefresh={handleRefresh} // Enable pull-to-refresh
-          refreshing={refreshing} // Show the refreshing indicator
+          data={friends}
+          keyExtractor={(item) => item.friend_id.toString()}
+          renderItem={renderFriend}
         />
       )}
+
+      <TouchableOpacity
+        style={styles.button}
+        onPress={() => setAddFriendModalVisible(true)}
+      >
+        <Text style={styles.buttonText}>Add Friend</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.button}
+        onPress={() => {
+          fetchFriendRequests();
+          setFriendRequestsModalVisible(true);
+        }}
+      >
+        <Text style={styles.buttonText}>Friend Requests</Text>
+      </TouchableOpacity>
+
+      {/* Add Friend Modal */}
+      {/* Add Friend Modal */}<AddFriendModal
+  visible={addFriendModalVisible}
+  onClose={() => setAddFriendModalVisible(false)}
+  onSearch={handleSearch}
+  searchResults={searchResults}
+  onAddFriend={addFriend}
+/>
+
+<FriendRequestsModal
+  visible={friendRequestsModalVisible}
+  onClose={() => setFriendRequestsModalVisible(false)}
+  friendRequests={friendRequests}
+/>
+
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 16,
-    backgroundColor: '#fff',
-  },
+  container: { flex: 1, padding: 16, backgroundColor: "#fff" },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 16,
-    textAlign: 'center',
+    textAlign: "center",
   },
-  list: {
-    paddingBottom: 16,
-  },
-  requestItem: {
-    backgroundColor: '#f9f9f9',
+  button: {
+    backgroundColor: "#007AFF",
     padding: 16,
     marginVertical: 8,
     borderRadius: 8,
-    elevation: 2,
   },
-  requestText: {
-    fontSize: 16,
-    fontWeight: '500',
-    marginBottom: 8,
+  buttonText: { color: "#fff", textAlign: "center", fontWeight: "bold" },
+  friendText: { fontSize: 16, marginBottom: 8 },
+  modal: {
+    justifyContent: 'flex-end',
+    margin: 0,
   },
-  buttonsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  modalBackground: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)", // Semi-transparent background
   },
-  acceptButton: {
-    backgroundColor: '#4CAF50',
-    padding: 8,
-    borderRadius: 4,
+  modalContent: {
+    backgroundColor: '#FFF',
+    padding: 30,
+    borderRadius: 10,
+    alignItems: 'center',
+    height: '70%',
+    width: '100%',
+    alignSelf: 'center',
   },
-  rejectButton: {
-    backgroundColor: '#F44336',
-    padding: 8,
-    borderRadius: 4,
+  searchInput: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 5,
+    padding: 10,
+    width: '80%',
+    marginBottom: 20,
+    fontSize: 18,
   },
-  buttonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 'bold',
+  searchResultItem: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#ccc",
   },
+  searchResultText: { fontSize: 16 },
+  friendRequestText: { fontSize: 16, marginBottom: 8 },
+  closeModal: { color: "#007AFF", textAlign: "center", marginTop: 16 },
 });
 
-export default FriendRequestsScreen;
+export default FriendsScreen;

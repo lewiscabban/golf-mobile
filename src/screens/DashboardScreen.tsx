@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';  // Import SafeAr
 
 type DashboardStackParamList = {
   ProfileStack: { screen: string; params: { RoundID: number } };
-  FriendRequests: undefined; // Define the FriendRequests screen
+  Friends: undefined; // Define the FriendRequests screen
 };
 
 const DashboardScreen = () => {
@@ -63,7 +63,7 @@ const DashboardScreen = () => {
   };
 
   const navigateToFriendRequests = () => {
-    navigation.navigate('FriendRequests');
+    navigation.navigate('Friends');
   };
 
   return (

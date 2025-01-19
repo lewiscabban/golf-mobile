@@ -9,6 +9,7 @@ import AddPlayersScreen from '../screens/AddPlayersScreen';
 import PlayRoundScreen from '../screens/PlayRoundScreen';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import ResultsScreen from '../screens/ResultsScreen';
+import FriendsScreen from '../screens/FriendsScreen';
 
 const Tab = createBottomTabNavigator();
 const ProfileStack = createNativeStackNavigator();
@@ -21,6 +22,15 @@ const ProfileStackScreen = () => {
         <ProfileStack.Screen name="AddPlayers" component={AddPlayersScreen} />
         <ProfileStack.Screen name="PlayRound" component={PlayRoundScreen} options={{headerLeft: () => null,}} />
         <ProfileStack.Screen name="Results" component={ResultsScreen} />
+      </ProfileStack.Navigator>
+    );
+};  
+
+const DasthoardStackScreen = () => {
+    return (
+      <ProfileStack.Navigator>
+        <ProfileStack.Screen name="Dashboard" component={DashboardScreen} />
+        <ProfileStack.Screen name="Friends" component={FriendsScreen} />
       </ProfileStack.Navigator>
     );
 };  
@@ -47,7 +57,7 @@ const AppTabs = () => {
     >
       <Tab.Screen
         name="Dashboard"
-        component={DashboardScreen}
+        component={DasthoardStackScreen}
         options={{ headerShown: false }}
       />
       <Tab.Screen

@@ -8,11 +8,17 @@ import { Session } from '@supabase/supabase-js';
 import LoginScreen from '../screens/LoginScreen';
 import SignupScreen from '../screens/SignupScreen';
 
-const Stack = createNativeStackNavigator();
+type RootStackParamList = {
+  Home: undefined;
+  Login: undefined;
+  Signup: undefined;
+};
+
+const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const LoggedOutNavigator = () => (
-  <Stack.Navigator>
-    <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
+  <Stack.Navigator initialRouteName="Home">
+    <Stack.Screen name="Home" component={HomeScreen} />
     <Stack.Screen name="Login" component={LoginScreen} />
     <Stack.Screen name="Signup" component={SignupScreen} />
   </Stack.Navigator>
@@ -22,6 +28,7 @@ const LoggedInNavigator = () => <AppTabs />;
 
 export default function Navigation() {
   const [session, setSession] = useState<Session | null>(null);
+  console.log("navigatior")
 
   useEffect(() => {
     const fetchSession = async () => {

@@ -7,22 +7,16 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
-  Modal,
-  TextInput,
 } from "react-native";
 import { supabase } from "../supabase/supabaseClient";
-import FriendRequestsModal from "../components/FriendRequestsModal";
 import AddFriendModal from "../components/AddFriendModal";
+import FriendRequestsModal from "../components/FriendRequestsModal";
 
 const FriendsScreen = () => {
   const [friends, setFriends] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [addFriendModalVisible, setAddFriendModalVisible] = useState(false);
-  const [friendRequestsModalVisible, setFriendRequestsModalVisible] =
-    useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [friendRequestsModalVisible, setFriendRequestsModalVisible] = useState(false);
   const [friendRequests, setFriendRequests] = useState<any[]>([]);
 
   // Fetch current friends
@@ -45,43 +39,66 @@ const FriendsScreen = () => {
       return;
     }
 
+    // Fetch friendships where the user is either the sender or receiver and the status is accepted
     const { data: friendsData, error } = await supabase
       .from("friendships")
       .select("*")
       .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
-      .neq("sender_id", user.id) // Adjust as needed
-      .neq("receiver_id", user.id); // Optional additional filtering
+      .eq("status", "accepted");
 
     if (error) {
       console.error("Error fetching friends:", error);
       Alert.alert("Error", "Failed to fetch friends.");
-    } else {
-      setFriends(friendsData || []);
+      setLoading(false);
+      return;
     }
 
+    // Fetch the profiles for both sender and receiver
+    const senderIds = friendsData.map((friendship) => friendship.sender_id);
+    const receiverIds = friendsData.map((friendship) => friendship.receiver_id);
+
+    const { data: senderProfiles, error: senderError } = await supabase
+      .from("profiles")
+      .select("id, username")
+      .in("id", senderIds);
+
+    const { data: receiverProfiles, error: receiverError } = await supabase
+      .from("profiles")
+      .select("id, username")
+      .in("id", receiverIds);
+
+    if (senderError || receiverError) {
+      console.error("Error fetching profiles:", senderError || receiverError);
+      Alert.alert("Error", "Failed to fetch profiles.");
+      setLoading(false);
+      return;
+    }
+
+    // Map friendships data to include both sender and receiver usernames
+    const formattedFriends = friendsData.map((friendship) => {
+      const senderProfile = senderProfiles.find(
+        (profile) => profile.id === friendship.sender_id
+      );
+      const receiverProfile = receiverProfiles.find(
+        (profile) => profile.id === friendship.receiver_id
+      );
+
+      const isSender = friendship.sender_id === user.id;
+      return {
+        id: friendship.id,
+        friend_id: isSender ? friendship.receiver_id : friendship.sender_id,
+        sender_username: senderProfile?.username,
+        receiver_username: receiverProfile?.username,
+      };
+    });
+
+    setFriends(formattedFriends);
     setLoading(false);
-    setRefreshing(false);
   };
 
   useEffect(() => {
     fetchFriends();
   }, []);
-
-  const handleSearch = async () => {
-    if (!searchQuery) return;
-
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("id, username")
-      .ilike("username", `%${searchQuery}%`);
-
-    if (error) {
-      console.error("Error searching users:", error);
-      Alert.alert("Error", "Failed to search users.");
-    } else {
-      setSearchResults(data || []);
-    }
-  };
 
   const addFriend = async (friendId: string) => {
     const { data: userData, error: userError } = await supabase.auth.getUser();
@@ -141,20 +158,11 @@ const FriendsScreen = () => {
   };
 
   const renderFriend = ({ item }: { item: any }) => (
-    <Text style={styles.friendText}>Friend ID: {item.friend_id}</Text>
-  );
-
-  const renderSearchResult = ({ item }: { item: any }) => (
-    <TouchableOpacity
-      style={styles.searchResultItem}
-      onPress={() => addFriend(item.id)}
-    >
-      <Text style={styles.searchResultText}>{item.username}</Text>
-    </TouchableOpacity>
-  );
-
-  const renderFriendRequest = ({ item }: { item: any }) => (
-    <Text style={styles.friendRequestText}>Request from: {item.sender_id}</Text>
+    <View style={styles.friendItem}>
+      <Text style={styles.friendText}>
+        {item.sender_username} & {item.receiver_username}
+      </Text>
+    </View>
   );
 
   return (
@@ -165,7 +173,7 @@ const FriendsScreen = () => {
       ) : (
         <FlatList
           data={friends}
-          keyExtractor={(item) => item.friend_id.toString()}
+          keyExtractor={(item) => item.id.toString()}
           renderItem={renderFriend}
         />
       )}
@@ -188,20 +196,17 @@ const FriendsScreen = () => {
       </TouchableOpacity>
 
       {/* Add Friend Modal */}
-      {/* Add Friend Modal */}<AddFriendModal
-  visible={addFriendModalVisible}
-  onClose={() => setAddFriendModalVisible(false)}
-  onSearch={handleSearch}
-  searchResults={searchResults}
-  onAddFriend={addFriend}
-/>
+      <AddFriendModal
+        visible={addFriendModalVisible}
+        onClose={() => setAddFriendModalVisible(false)}
+        onAddFriend={addFriend}
+      />
 
-<FriendRequestsModal
-  visible={friendRequestsModalVisible}
-  onClose={() => setFriendRequestsModalVisible(false)}
-  friendRequests={friendRequests}
-/>
-
+      <FriendRequestsModal
+        visible={friendRequestsModalVisible}
+        onClose={() => setFriendRequestsModalVisible(false)}
+        friendRequests={friendRequests}
+      />
     </View>
   );
 };
@@ -221,43 +226,12 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   buttonText: { color: "#fff", textAlign: "center", fontWeight: "bold" },
-  friendText: { fontSize: 16, marginBottom: 8 },
-  modal: {
-    justifyContent: 'flex-end',
-    margin: 0,
-  },
-  modalBackground: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.5)", // Semi-transparent background
-  },
-  modalContent: {
-    backgroundColor: '#FFF',
-    padding: 30,
-    borderRadius: 10,
-    alignItems: 'center',
-    height: '70%',
-    width: '100%',
-    alignSelf: 'center',
-  },
-  searchInput: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 5,
-    padding: 10,
-    width: '80%',
-    marginBottom: 20,
-    fontSize: 18,
-  },
-  searchResultItem: {
+  friendItem: {
     padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: "#ccc",
   },
-  searchResultText: { fontSize: 16 },
-  friendRequestText: { fontSize: 16, marginBottom: 8 },
-  closeModal: { color: "#007AFF", textAlign: "center", marginTop: 16 },
+  friendText: { fontSize: 16 },
 });
 
 export default FriendsScreen;

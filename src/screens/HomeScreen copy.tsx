@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, Alert } from 'react-native';
 import { NavigationProp, useNavigation } from '@react-navigation/native';
+import React from 'react';
+import { View, Text, Button, StyleSheet } from 'react-native';
 
 type RootStackParamList = {
   Home: undefined;

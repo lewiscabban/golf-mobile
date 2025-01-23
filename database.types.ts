@@ -520,6 +520,30 @@ export type Database = {
         }
         Relationships: []
       }
+      friendships: {
+        Row: {
+          created_at: string | null
+          id: number
+          receiver_id: string | null
+          sender_id: string | null
+          status: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: number
+          receiver_id?: string | null
+          sender_id?: string | null
+          status?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: number
+          receiver_id?: string | null
+          sender_id?: string | null
+          status?: string | null
+        }
+        Relationships: []
+      }
       game: {
         Row: {
           created_at: string
@@ -607,22 +631,28 @@ export type Database = {
       }
       profiles: {
         Row: {
-          first_name: string | null
+          first_name: string
+          full_name: string | null
           id: string
-          last_name: string | null
+          last_name: string
           updated_at: string | null
+          username: string
         }
         Insert: {
-          first_name?: string | null
+          first_name: string
+          full_name?: string | null
           id: string
-          last_name?: string | null
+          last_name: string
           updated_at?: string | null
+          username: string
         }
         Update: {
-          first_name?: string | null
+          first_name?: string
+          full_name?: string | null
           id?: string
-          last_name?: string | null
+          last_name?: string
           updated_at?: string | null
+          username?: string
         }
         Relationships: []
       }

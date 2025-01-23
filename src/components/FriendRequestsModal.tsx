@@ -1,6 +1,7 @@
-import React from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import Modal from 'react-native-modal';
+import { supabase } from '../supabase/supabaseClient';
 
 type FriendRequestsModalProps = {
   visible: boolean;
@@ -9,6 +10,61 @@ type FriendRequestsModalProps = {
 };
 
 const FriendRequestsModal: React.FC<FriendRequestsModalProps> = ({ visible, onClose, friendRequests }) => {
+  const [friendRequestsWithUsernames, setFriendRequestsWithUsernames] = useState<
+    { id: string; sender_id: string; username: string }[]
+  >([]);
+
+  // Fetch usernames for each sender_id
+  useEffect(() => {
+    const fetchUsernames = async () => {
+      const senderIds = friendRequests.map((request) => request.sender_id);
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, username')
+        .in('id', senderIds);
+
+      if (error) {
+        console.error('Error fetching usernames:', error);
+        return;
+      }
+
+      // Map the friend requests to include usernames
+      const enrichedRequests = friendRequests.map((request) => {
+        const senderProfile = data?.find((profile) => profile.id === request.sender_id);
+        return {
+          ...request,
+          username: senderProfile?.username || 'Unknown User',
+        };
+      });
+
+      setFriendRequestsWithUsernames(enrichedRequests);
+    };
+
+    if (friendRequests.length > 0) {
+      fetchUsernames();
+    }
+  }, [friendRequests]);
+
+  const handleAcceptRequest = async (requestId: string) => {
+    // Update the database to accept the request
+    const { error } = await supabase
+      .from('friendships')
+      .update({ status: 'accepted' })
+      .eq('id', requestId);
+    console.log(requestId)
+    if (error) {
+      Alert.alert('Error', 'Failed to accept the friend request.');
+      console.error('Error accepting friend request:', error);
+      return;
+    }
+
+    // Remove the accepted request from the UI
+    setFriendRequestsWithUsernames((prev) => prev.filter((req) => req.id !== requestId));
+
+    Alert.alert('Success', 'Friend request accepted!');
+  };
+
   return (
     <Modal
       isVisible={visible}
@@ -22,11 +78,17 @@ const FriendRequestsModal: React.FC<FriendRequestsModalProps> = ({ visible, onCl
       <View style={styles.content}>
         <Text style={styles.text}>Friend Requests</Text>
         <FlatList
-          data={friendRequests}
+          data={friendRequestsWithUsernames}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <View style={styles.requestItem}>
-              <Text style={styles.requestText}>Request from: {item.sender_id}</Text>
+              <Text style={styles.requestText}>Request from: {item.username}</Text>
+              <TouchableOpacity
+                style={styles.acceptButton}
+                onPress={() => handleAcceptRequest(item.id)}
+              >
+                <Text style={styles.acceptButtonText}>Accept</Text>
+              </TouchableOpacity>
             </View>
           )}
         />
@@ -60,9 +122,22 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#ccc',
     width: '100%',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   requestText: {
     fontSize: 18,
+  },
+  acceptButton: {
+    backgroundColor: '#007AFF',
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 5,
+  },
+  acceptButtonText: {
+    color: '#FFF',
+    fontSize: 16,
   },
   closeText: {
     color: '#007AFF',

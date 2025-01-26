@@ -11,6 +11,7 @@ import {
 import { supabase } from "../supabase/supabaseClient";
 import AddFriendModal from "../components/AddFriendModal";
 import FriendRequestsModal from "../components/FriendRequestsModal";
+import Ionicons from "react-native-vector-icons/Ionicons";
 
 const FriendsScreen = () => {
   const [friends, setFriends] = useState<any[]>([]);
@@ -157,11 +158,49 @@ const FriendsScreen = () => {
     }
   };
 
+  const deleteFriend = async (friendshipId: number) => {
+    try {
+      const { error } = await supabase
+        .from("friendships")
+        .delete()
+        .eq("id", friendshipId);
+
+      if (error) {
+        console.error("Error deleting friendship:", error);
+        Alert.alert("Error", "Failed to delete friendship.");
+      } else {
+        Alert.alert("Success", "Friendship deleted.");
+        fetchFriends(); // Refresh the friends list
+      }
+    } catch (err) {
+      console.error("Unexpected error:", err);
+      Alert.alert("Error", "Something went wrong.");
+    }
+  };
+
+  const handleDeletePress = (friendshipId: number) => {
+    Alert.alert(
+      "Delete Friend",
+      "Are you sure you want to delete this friend?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => deleteFriend(friendshipId),
+        },
+      ]
+    );
+  };
+
   const renderFriend = ({ item }: { item: any }) => (
     <View style={styles.friendItem}>
       <Text style={styles.friendText}>
         {item.sender_username} & {item.receiver_username}
       </Text>
+      <TouchableOpacity style={styles.deleteButton} onPress={() => handleDeletePress(item.id)}>
+        <Ionicons name="trash" size={24} color="red" />
+      </TouchableOpacity>
     </View>
   );
 
@@ -198,13 +237,19 @@ const FriendsScreen = () => {
       {/* Add Friend Modal */}
       <AddFriendModal
         visible={addFriendModalVisible}
-        onClose={() => setAddFriendModalVisible(false)}
+        onClose={() => {
+          setAddFriendModalVisible(false);
+          fetchFriends(); // Refresh the friends list after closing the modal
+        }}
         onAddFriend={addFriend}
       />
 
       <FriendRequestsModal
         visible={friendRequestsModalVisible}
-        onClose={() => setFriendRequestsModalVisible(false)}
+        onClose={() => {
+          setFriendRequestsModalVisible(false);
+          fetchFriends(); // Refresh the friends list after closing the modal
+        }}
         friendRequests={friendRequests}
       />
     </View>
@@ -228,8 +273,14 @@ const styles = StyleSheet.create({
   buttonText: { color: "#fff", textAlign: "center", fontWeight: "bold" },
   friendItem: {
     padding: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     borderBottomWidth: 1,
     borderBottomColor: "#ccc",
+  },
+  deleteButton: {
+    padding: 8, // Adds touchable area for the button
   },
   friendText: { fontSize: 16 },
 });

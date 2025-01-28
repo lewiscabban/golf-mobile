@@ -2,7 +2,7 @@
 import { Database } from '../../database.types';
 
 // Refer to a specific table type
-export type CourseRow = Database['public']['Tables']['courses']['Row'];
+export type CoursesRow = Database['public']['Tables']['courses']['Row'];
 export type ClubRow = Database['public']['Tables']['clubs']['Row'];
 export type TeeRow = Database['public']['Tables']['tees']['Row'];
 export type CoordinateRow = Database['public']['Tables']['coordinates']['Row'];

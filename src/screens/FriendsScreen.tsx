@@ -20,10 +20,10 @@ const FriendsScreen = () => {
   const [friendRequestsModalVisible, setFriendRequestsModalVisible] = useState(false);
   const [friendRequests, setFriendRequests] = useState<any[]>([]);
 
-  // Fetch current friends
   const fetchFriends = async () => {
     setLoading(true);
 
+    // Get the current user's data
     const { data: userData, error: userError } = await supabase.auth.getUser();
     if (userError) {
       console.error("Error fetching user:", userError);
@@ -40,10 +40,10 @@ const FriendsScreen = () => {
       return;
     }
 
-    // Fetch friendships where the user is either the sender or receiver and the status is accepted
+    // Fetch friendships where the user is the sender or receiver and the status is accepted
     const { data: friendsData, error } = await supabase
       .from("friendships")
-      .select("*")
+      .select("id, sender_id, receiver_id")
       .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
       .eq("status", "accepted");
 
@@ -54,42 +54,32 @@ const FriendsScreen = () => {
       return;
     }
 
-    // Fetch the profiles for both sender and receiver
-    const senderIds = friendsData.map((friendship) => friendship.sender_id);
-    const receiverIds = friendsData.map((friendship) => friendship.receiver_id);
+    // Determine the friend ID and fetch only their username
+    const friendIds = friendsData.map((friendship) =>
+      friendship.sender_id === user.id ? friendship.receiver_id : friendship.sender_id
+    );
 
-    const { data: senderProfiles, error: senderError } = await supabase
+    const { data: friendProfiles, error: profileError } = await supabase
       .from("profiles")
       .select("id, username")
-      .in("id", senderIds);
+      .in("id", friendIds);
 
-    const { data: receiverProfiles, error: receiverError } = await supabase
-      .from("profiles")
-      .select("id, username")
-      .in("id", receiverIds);
-
-    if (senderError || receiverError) {
-      console.error("Error fetching profiles:", senderError || receiverError);
-      Alert.alert("Error", "Failed to fetch profiles.");
+    if (profileError) {
+      console.error("Error fetching friend profiles:", profileError);
+      Alert.alert("Error", "Failed to fetch friend profiles.");
       setLoading(false);
       return;
     }
 
-    // Map friendships data to include both sender and receiver usernames
+    // Map to a simpler structure for rendering
     const formattedFriends = friendsData.map((friendship) => {
-      const senderProfile = senderProfiles.find(
-        (profile) => profile.id === friendship.sender_id
-      );
-      const receiverProfile = receiverProfiles.find(
-        (profile) => profile.id === friendship.receiver_id
-      );
-
-      const isSender = friendship.sender_id === user.id;
+      const friendId =
+        friendship.sender_id === user.id ? friendship.receiver_id : friendship.sender_id;
+      const friendProfile = friendProfiles.find((profile) => profile.id === friendId);
       return {
         id: friendship.id,
-        friend_id: isSender ? friendship.receiver_id : friendship.sender_id,
-        sender_username: senderProfile?.username,
-        receiver_username: receiverProfile?.username,
+        friend_id: friendId,
+        friend_username: friendProfile?.username,
       };
     });
 
@@ -195,9 +185,7 @@ const FriendsScreen = () => {
 
   const renderFriend = ({ item }: { item: any }) => (
     <View style={styles.friendItem}>
-      <Text style={styles.friendText}>
-        {item.sender_username} & {item.receiver_username}
-      </Text>
+      <Text style={styles.friendText}>{item.friend_username}</Text>
       <TouchableOpacity style={styles.deleteButton} onPress={() => handleDeletePress(item.id)}>
         <Ionicons name="trash" size={24} color="red" />
       </TouchableOpacity>
@@ -234,12 +222,11 @@ const FriendsScreen = () => {
         <Text style={styles.buttonText}>Friend Requests</Text>
       </TouchableOpacity>
 
-      {/* Add Friend Modal */}
       <AddFriendModal
         visible={addFriendModalVisible}
         onClose={() => {
           setAddFriendModalVisible(false);
-          fetchFriends(); // Refresh the friends list after closing the modal
+          fetchFriends();
         }}
         onAddFriend={addFriend}
       />
@@ -248,7 +235,7 @@ const FriendsScreen = () => {
         visible={friendRequestsModalVisible}
         onClose={() => {
           setFriendRequestsModalVisible(false);
-          fetchFriends(); // Refresh the friends list after closing the modal
+          fetchFriends();
         }}
         friendRequests={friendRequests}
       />
@@ -280,7 +267,7 @@ const styles = StyleSheet.create({
     borderBottomColor: "#ccc",
   },
   deleteButton: {
-    padding: 8, // Adds touchable area for the button
+    padding: 8,
   },
   friendText: { fontSize: 16 },
 });

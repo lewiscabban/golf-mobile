@@ -64,7 +64,7 @@ export type Database = {
           Address: string | null
           City: string | null
           ClubID: number
-          ClubName: string | null
+          ClubName: string
           Continent: string | null
           Country: string | null
           Email: string | null
@@ -79,7 +79,7 @@ export type Database = {
           Address?: string | null
           City?: string | null
           ClubID: number
-          ClubName?: string | null
+          ClubName: string
           Continent?: string | null
           Country?: string | null
           Email?: string | null
@@ -94,7 +94,7 @@ export type Database = {
           Address?: string | null
           City?: string | null
           ClubID?: number
-          ClubName?: string | null
+          ClubName?: string
           Continent?: string | null
           Country?: string | null
           Email?: string | null
@@ -173,7 +173,7 @@ export type Database = {
         Row: {
           ClubID: number
           CourseID: number
-          CourseName: string | null
+          CourseName: string
           Hcp1: number | null
           Hcp10: number | null
           Hcp11: number | null
@@ -228,8 +228,8 @@ export type Database = {
           MatchIndex7: number | null
           MatchIndex8: number | null
           MatchIndex9: number | null
-          MeasureMeters: number | null
-          NumHoles: number | null
+          MeasureMeters: number
+          NumHoles: number
           Par1: number | null
           Par10: number | null
           Par11: number | null
@@ -289,7 +289,7 @@ export type Database = {
         Insert: {
           ClubID: number
           CourseID: number
-          CourseName?: string | null
+          CourseName: string
           Hcp1?: number | null
           Hcp10?: number | null
           Hcp11?: number | null
@@ -344,8 +344,8 @@ export type Database = {
           MatchIndex7?: number | null
           MatchIndex8?: number | null
           MatchIndex9?: number | null
-          MeasureMeters?: number | null
-          NumHoles?: number | null
+          MeasureMeters: number
+          NumHoles: number
           Par1?: number | null
           Par10?: number | null
           Par11?: number | null
@@ -405,7 +405,7 @@ export type Database = {
         Update: {
           ClubID?: number
           CourseID?: number
-          CourseName?: string | null
+          CourseName?: string
           Hcp1?: number | null
           Hcp10?: number | null
           Hcp11?: number | null
@@ -460,8 +460,8 @@ export type Database = {
           MatchIndex7?: number | null
           MatchIndex8?: number | null
           MatchIndex9?: number | null
-          MeasureMeters?: number | null
-          NumHoles?: number | null
+          MeasureMeters?: number
+          NumHoles?: number
           Par1?: number | null
           Par10?: number | null
           Par11?: number | null
@@ -542,7 +542,22 @@ export type Database = {
           sender_id?: string | null
           status?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "friendships_receiver_id_fkey1"
+            columns: ["receiver_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "friendships_sender_id_fkey1"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       game: {
         Row: {
@@ -632,25 +647,25 @@ export type Database = {
       profiles: {
         Row: {
           first_name: string
-          full_name: string | null
           id: string
           last_name: string
+          to_be_deleted: boolean
           updated_at: string | null
           username: string
         }
         Insert: {
           first_name: string
-          full_name?: string | null
           id: string
           last_name: string
+          to_be_deleted?: boolean
           updated_at?: string | null
           username: string
         }
         Update: {
           first_name?: string
-          full_name?: string | null
           id?: string
           last_name?: string
+          to_be_deleted?: boolean
           updated_at?: string | null
           username?: string
         }
@@ -685,9 +700,9 @@ export type Database = {
       scores: {
         Row: {
           created_at: string
-          hole: number | null
+          hole: number
           id: number
-          player: string | null
+          player: string
           puts: number | null
           round_id: number
           score: number | null
@@ -695,9 +710,9 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          hole?: number | null
+          hole: number
           id?: number
-          player?: string | null
+          player: string
           puts?: number | null
           round_id: number
           score?: number | null
@@ -705,9 +720,9 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          hole?: number | null
+          hole?: number
           id?: number
-          player?: string | null
+          player?: string
           puts?: number | null
           round_id?: number
           score?: number | null

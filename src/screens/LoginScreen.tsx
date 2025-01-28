@@ -9,15 +9,54 @@ const LoginScreen = () => {
 
   const handleLogin = async () => {
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+  
+    // Authenticate the user
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
     setLoading(false);
-
-    if (error) {
-      Alert.alert('Login Failed', error.message);
-    } else {
-      Alert.alert('Login Successful', 'Welcome back!');
+  
+    if (authError) {
+      Alert.alert('Login Failed', authError.message);
+      return;
     }
+  
+    // Get the authenticated user's details
+    const user = authData?.user;
+    if (!user) {
+      Alert.alert('Login Failed', 'No user found.');
+      return;
+    }
+  
+    // Check if the user is marked for deletion
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('to_be_deleted')
+      .eq('id', user.id)
+      .single();
+  
+    if (profileError) {
+      console.error('Error fetching profile:', profileError);
+      Alert.alert('Login Failed', 'Unable to fetch user profile.');
+      return;
+    }
+  
+    if (profileData?.to_be_deleted) {
+      Alert.alert(
+        'Account Locked',
+        'Your account has been marked for deletion. Please contact support if you believe this is an error.'
+      );
+  
+      // Log the user out immediately
+      await supabase.auth.signOut();
+      return;
+    }
+  
+    // Proceed if the account is not marked for deletion
+    Alert.alert('Login Successful', 'Welcome back!');
   };
+  
 
   return (
     <View style={styles.container}>

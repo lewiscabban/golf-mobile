@@ -118,6 +118,30 @@ const AddPlayersScreen = () => {
         return;
       }
 
+      const tee = tees.find((t) => t.TeeID === selectedTee);
+      if (!tee) {
+        Alert.alert('Error', 'Selected tee data not found.');
+        return;
+      }
+
+      const scoresToInsert = selectedPlayers.flatMap((player) =>
+        Array.from({ length: 18 }, (_, i) => i + 1)
+          .filter((hole) => (tee as Record<string, any>)[`Length${hole}`] !== null)
+          .map((hole) => ({
+            round_id: roundData.id,
+            tee_id: selectedTee,
+            player: player.id,
+            hole,
+          }))
+      );
+
+      const { error: scoresError } = await supabase.from('scores').insert(scoresToInsert);
+      if (scoresError) {
+        console.error('Error inserting scores:', scoresError);
+        Alert.alert('Error', 'Failed to initialize scores for the round.');
+        return;
+      }
+
       navigation.navigate('PlayRound', { RoundID: roundData.id });
     } catch (err) {
       console.error('Unexpected error:', err);
@@ -166,11 +190,7 @@ const AddPlayersScreen = () => {
         placeholder="Select a tee"
         style={styles.dropdown}
       />
-      <Button
-        title={loading ? 'Adding Round...' : 'Go to Play Round'}
-        onPress={handleAddRound}
-        disabled={loading || selectedTee === undefined}
-      />
+      <Button title={loading ? 'Adding Round...' : 'Go to Play Round'} onPress={handleAddRound} disabled={loading || selectedTee === undefined} />
     </View>
   );
 };

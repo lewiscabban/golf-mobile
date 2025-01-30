@@ -7,6 +7,15 @@ import HoleModal from '../components/HoleModal';
 type Score = {
   hole: number;
   score: number | null;
+  player: string; // Using `player` instead of `player_id`
+  profiles?: { username: string } | null; // Ensure `profiles` is an object or null
+};
+
+
+type PlayerScores = {
+  player_id: string;
+  player_name: string;
+  scores: Score[];
 };
 
 type ProfileStackParamList = {
@@ -18,10 +27,12 @@ const PlayRoundScreen = () => {
   const navigation = useNavigation<NavigationProp<ProfileStackParamList>>();
   const { RoundID } = route.params as { RoundID: number };
 
-  const [scores, setScores] = useState<Score[]>([]);
+  const [playerScores, setPlayerScores] = useState<PlayerScores[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
-  const [selectedHole, setSelectedHole] = useState<number | null>(null);
+  const [selectedHole, setSelectedHole] = useState<{ hole: number; player_id: string } | null>(
+    null
+  );
 
   useEffect(() => {
     const fetchScores = async () => {
@@ -29,17 +40,34 @@ const PlayRoundScreen = () => {
       try {
         const { data, error } = await supabase
           .from('scores')
-          .select('hole, score')
-          .eq('round_id', RoundID);
+          .select('hole, score, player, profiles(username)')
+          .eq('round_id', RoundID)
+          .order('hole', { ascending: true });
 
         if (error) {
           console.error('Error fetching scores:', error);
           Alert.alert('Error', 'Failed to load scores.');
-        } else {
-          // Sort the holes to always display in order from 1 to 18
-          const sortedScores = (data || []).sort((a, b) => a.hole - b.hole);
-          setScores(sortedScores);
+          return;
         }
+
+        // Fix: Ensure profiles is an object, not an array
+        const scoresByPlayer: { [key: string]: PlayerScores } = {};
+        data.forEach((score) => {
+          const playerId = score.player;
+          const playerName = score.profiles?.username ?? 'Unknown Player';
+// Fix: Use optional chaining
+
+          if (!scoresByPlayer[playerId]) {
+            scoresByPlayer[playerId] = {
+              player_id: playerId,
+              player_name: playerName,
+              scores: [],
+            };
+          }
+          scoresByPlayer[playerId].scores.push(score);
+        });
+
+        setPlayerScores(Object.values(scoresByPlayer));
       } catch (err) {
         console.error('Unexpected error:', err);
         Alert.alert('Error', 'Something went wrong. Please try again.');
@@ -51,8 +79,8 @@ const PlayRoundScreen = () => {
     fetchScores();
   }, [RoundID]);
 
-  const handleOpenModal = (hole: number) => {
-    setSelectedHole(hole);
+  const handleOpenModal = (hole: number, player_id: string) => {
+    setSelectedHole({ hole, player_id });
     setModalVisible(true);
   };
 
@@ -61,23 +89,34 @@ const PlayRoundScreen = () => {
     setModalVisible(false);
   };
 
-  const handleSaveScore = async (holeNumber: number, newScore: number) => {
+  const handleSaveScore = async (holeNumber: number, player: string, newScore: number) => {
     try {
-      // Update the score for the given hole
+      console.log("adding player score")
+      console.log(newScore)
+      console.log(RoundID)
+      console.log(holeNumber)
+      console.log(player)
       const { error } = await supabase
         .from('scores')
         .update({ score: newScore })
         .eq('round_id', RoundID)
-        .eq('hole', holeNumber);
-
+        .eq('hole', holeNumber)
+        .eq('player', player); // Use `player` instead of `player_id`
+  
       if (error) {
         console.error('Error updating score:', error);
         Alert.alert('Error', 'Failed to update the score.');
       } else {
-        // Update the state with the new score
-        setScores((prevScores) =>
-          prevScores.map((score) =>
-            score.hole === holeNumber ? { ...score, score: newScore } : score
+        setPlayerScores((prevScores) =>
+          prevScores.map((p) =>
+            p.player_id === player
+              ? {
+                  ...p,
+                  scores: p.scores.map((score) =>
+                    score.hole === holeNumber ? { ...score, score: newScore } : score
+                  ),
+                }
+              : p
           )
         );
       }
@@ -94,35 +133,12 @@ const PlayRoundScreen = () => {
       <Text style={styles.holeLabel}>Hole {item.hole}</Text>
       <TouchableOpacity
         style={styles.holeButton}
-        onPress={() => {
-          setSelectedHole(item.hole);
-          setModalVisible(true);
-        }}
+        onPress={() => handleOpenModal(item.hole, item.player)}
       >
         <Text style={styles.holeScore}>{item.score !== null ? item.score : '-'}</Text>
       </TouchableOpacity>
     </View>
   );
-
-  // Add the exit button to reset the stack
-  useEffect(() => {
-    navigation.setOptions({
-      headerLeft: () => null, // This removes the back button
-      headerRight: () => (
-        <TouchableOpacity
-          onPress={() => {
-            navigation.reset({
-              index: 0,
-              routes: [{ name: 'Profile' }],
-            });
-          }}
-          style={styles.exitButton}
-        >
-          <Text style={styles.exitText}>Exit</Text>
-        </TouchableOpacity>
-      ),
-    });
-  }, [navigation]);
 
   if (loading) {
     return (
@@ -135,18 +151,25 @@ const PlayRoundScreen = () => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Play Round</Text>
-      <FlatList
-        data={scores}
-        keyExtractor={(item) => item.hole.toString()}
-        renderItem={renderHoleButton}
-        horizontal
-        contentContainerStyle={styles.holeList}
-      />
+      {playerScores.map((player) => (
+        <View key={player.player_id} style={styles.playerContainer}>
+          <Text style={styles.playerName}>{player.player_name}</Text>
+          <FlatList
+            data={player.scores}
+            keyExtractor={(item) => `${player.player_id}-${item.hole}`}
+            renderItem={renderHoleButton}
+            horizontal
+            contentContainerStyle={styles.holeList}
+          />
+        </View>
+      ))}
       <HoleModal
         visible={modalVisible}
-        holeNumber={selectedHole}
+        holeNumber={selectedHole?.hole ?? null} // Ensure it’s either a number or null
         onClose={handleCloseModal}
-        onSave={handleSaveScore}
+        onSave={(hole, newScore) =>
+          handleSaveScore(hole, selectedHole?.player_id ?? '', newScore)
+        }
       />
     </View>
   );
@@ -162,6 +185,15 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 16,
+    textAlign: 'center',
+  },
+  playerContainer: {
+    marginBottom: 20,
+  },
+  playerName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
     textAlign: 'center',
   },
   holeList: {
@@ -189,15 +221,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#333',
-  },
-  exitButton: {
-    marginRight: 10,
-    padding: 8,
-  },
-  exitText: {
-    color: '#007BFF',
-    fontSize: 16,
-    fontWeight: 'bold',
   },
 });
 

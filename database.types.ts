@@ -737,6 +737,13 @@ export type Database = {
             referencedColumns: ["TeeID"]
           },
           {
+            foreignKeyName: "scores_player_fkey1"
+            columns: ["player"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "scores_round_id_fkey"
             columns: ["round_id"]
             isOneToOne: false

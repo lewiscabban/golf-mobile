@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { supabase } from '../supabase/supabaseClient';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
-import { RoundsRow, ScoresRow, CoursesRow, ProfileRow } from '../types/supabase';
+import { RoundsRow, ScoresRow, CoursesRow } from '../types/supabase';
 import Ionicons from 'react-native-vector-icons/Ionicons'; // Import Ionicons for the friends icon
 
 type DashboardStackParamList = {
@@ -236,7 +236,7 @@ const DashboardScreen = () => {
       >
         <Text style={styles.roundText}>Course: {courseName}</Text>
         <Text style={styles.roundText}>Club: {clubName}</Text>
-        <Text style={styles.roundText}>Players: {players}</Text> {/* Display players */}
+        <Text style={styles.roundText}>Players: {players}</Text>
         <Text style={styles.roundText}>Golf Score: {golfScore}</Text>
       </TouchableOpacity>
     );

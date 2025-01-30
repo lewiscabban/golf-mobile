@@ -15,20 +15,20 @@ import Ionicons from "react-native-vector-icons/Ionicons";
 
 const FriendsScreen = () => {
   const [friends, setFriends] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [friendsLoading, setFriendsLoading] = useState(true);
   const [addFriendModalVisible, setAddFriendModalVisible] = useState(false);
   const [friendRequestsModalVisible, setFriendRequestsModalVisible] = useState(false);
   const [friendRequests, setFriendRequests] = useState<any[]>([]);
 
   const fetchFriends = async () => {
-    setLoading(true);
+    setFriendsLoading(true);
 
     // Get the current user's data
     const { data: userData, error: userError } = await supabase.auth.getUser();
     if (userError) {
       console.error("Error fetching user:", userError);
       Alert.alert("Error", "Failed to get user data.");
-      setLoading(false);
+      setFriendsLoading(false);
       return;
     }
 
@@ -36,7 +36,7 @@ const FriendsScreen = () => {
     if (!user) {
       console.error("No authenticated user found");
       Alert.alert("Error", "User not authenticated.");
-      setLoading(false);
+      setFriendsLoading(false);
       return;
     }
 
@@ -50,7 +50,7 @@ const FriendsScreen = () => {
     if (error) {
       console.error("Error fetching friends:", error);
       Alert.alert("Error", "Failed to fetch friends.");
-      setLoading(false);
+      setFriendsLoading(false);
       return;
     }
 
@@ -67,7 +67,7 @@ const FriendsScreen = () => {
     if (profileError) {
       console.error("Error fetching friend profiles:", profileError);
       Alert.alert("Error", "Failed to fetch friend profiles.");
-      setLoading(false);
+      setFriendsLoading(false);
       return;
     }
 
@@ -84,7 +84,7 @@ const FriendsScreen = () => {
     });
 
     setFriends(formattedFriends);
-    setLoading(false);
+    setFriendsLoading(false);
   };
 
   useEffect(() => {
@@ -195,7 +195,7 @@ const FriendsScreen = () => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>My Friends</Text>
-      {loading ? (
+      {friendsLoading ? (
         <ActivityIndicator size="large" color="#0000ff" />
       ) : (
         <FlatList

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Button, StyleSheet, TextInput, Alert } from 'react-native';
-import { Dropdown } from 'react-native-element-dropdown'; // Import Dropdown component
+import { View, Text, Button, StyleSheet, TextInput, Alert, FlatList, TouchableOpacity } from 'react-native';
+import { Dropdown } from 'react-native-element-dropdown';
 import { useNavigation, NavigationProp, useRoute } from '@react-navigation/native';
 import { supabase } from '../supabase/supabaseClient';
 import { TeeRow } from '../types/supabase';
@@ -15,44 +15,89 @@ const AddPlayersScreen = () => {
   const route = useRoute();
   const { ClubID, CourseID } = route.params as { ClubID: number; CourseID: number };
 
+  const [friends, setFriends] = useState<any[]>([]);
   const [playerName, setPlayerName] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [selectedPlayers, setSelectedPlayers] = useState<any[]>([]);
   const [tees, setTees] = useState<TeeRow[]>([]);
   const [selectedTee, setSelectedTee] = useState<number | undefined>(undefined);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const fetchTees = async () => {
-      setLoading(true);
-
-      try {
-        const { data, error } = await supabase
-          .from('tees')
-          .select('*')
-          .eq('CourseID', CourseID);
-
-        if (error) {
-          console.error('Error fetching tees:', error);
-          Alert.alert('Error', 'Failed to load tees.');
-        } else {
-          setTees(data || []);
-        }
-      } catch (err) {
-        console.error('Unexpected error:', err);
-        Alert.alert('Error', 'Something went wrong. Please try again.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
+    fetchFriends();
     fetchTees();
-  }, [CourseID]);
+    getCurrentUser();
+  }, []);
 
-  const handleAddRound = async () => {
-    if (!playerName.trim()) {
-      Alert.alert('Validation Error', 'Please enter a player name.');
+  const fetchFriends = async () => {
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    if (userError || !userData?.user) return;
+
+    const { data: friendsData, error } = await supabase
+      .from('friendships')
+      .select('id, sender_id, receiver_id')
+      .or(`sender_id.eq.${userData.user.id},receiver_id.eq.${userData.user.id}`)
+      .eq('status', 'accepted');
+
+    if (error) return;
+
+    const friendIds = friendsData.map((f) =>
+      f.sender_id === userData.user.id ? f.receiver_id : f.sender_id
+    );
+
+    const { data: friendProfiles } = await supabase
+      .from('profiles')
+      .select('id, username')
+      .in('id', friendIds);
+
+    setFriends(friendProfiles || []);
+  };
+
+  const fetchTees = async () => {
+    const { data, error } = await supabase.from('tees').select('*').eq('CourseID', CourseID);
+    if (!error) setTees(data || []);
+  };
+
+  const getCurrentUser = async () => {
+    const { data: userData } = await supabase.auth.getUser();
+    if (userData?.user) {
+      const { data: profileData, error } = await supabase
+        .from('profiles')
+        .select('id, username')
+        .eq('id', userData.user.id)
+        .single();
+      
+      if (!error && profileData) {
+        setSelectedPlayers([{ id: profileData.id, username: profileData.username }]);
+      }
+    }
+  };
+
+  const handleSearch = (text: string) => {
+    setPlayerName(text);
+    if (!text.trim()) {
+      setSearchResults([]);
       return;
     }
+    const filtered = friends.filter((friend) =>
+      friend.username.toLowerCase().includes(text.toLowerCase())
+    );
+    setSearchResults(filtered.slice(0, 10));
+  };
 
+  const addPlayer = (player: any) => {
+    if (!selectedPlayers.find((p) => p.id === player.id)) {
+      setSelectedPlayers([...selectedPlayers, player]);
+    }
+    setPlayerName('');
+    setSearchResults([]);
+  };
+
+  const removePlayer = (playerId: number) => {
+    setSelectedPlayers(selectedPlayers.filter((player) => player.id !== playerId));
+  };
+
+  const handleAddRound = async () => {
     if (selectedTee === undefined) {
       Alert.alert('Validation Error', 'Please select a tee.');
       return;
@@ -61,16 +106,6 @@ const AddPlayersScreen = () => {
     setLoading(true);
 
     try {
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-
-      if (sessionError || !sessionData?.session?.user) {
-        console.error('Error fetching user session:', sessionError);
-        Alert.alert('Error', 'Unable to retrieve user information. Please log in again.');
-        return;
-      }
-
-      const userId = sessionData.session.user.id;
-
       const { data: roundData, error: roundError } = await supabase
         .from('rounds')
         .insert([{ course_id: CourseID }])
@@ -80,21 +115,6 @@ const AddPlayersScreen = () => {
       if (roundError || !roundData) {
         console.error('Error inserting round:', roundError);
         Alert.alert('Error', 'Failed to create a new round. Please try again.');
-        return;
-      }
-
-      const scoresToInsert = Array.from({ length: 18 }, (_, i) => ({
-        round_id: roundData.id,
-        hole: i + 1,
-        player: userId,
-        tee_id: selectedTee,
-      }));
-
-      const { error: scoresError } = await supabase.from('scores').insert(scoresToInsert);
-
-      if (scoresError) {
-        console.error('Error inserting scores:', scoresError);
-        Alert.alert('Error', 'Failed to initialize scores for the round.');
         return;
       }
 
@@ -110,32 +130,42 @@ const AddPlayersScreen = () => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Add Players</Text>
-      <Text style={styles.text}>Enter the player's name for the golf round.</Text>
-
-      {/* Form Container with TextInput and Dropdown */}
-      <View style={styles.formContainer}>
-        <TextInput
-          style={styles.input}
-          placeholder="Player Name"
-          value={playerName}
-          onChangeText={setPlayerName}
-        />
-
-        {/* Dropdown for Tee Selection */}
-        <Dropdown
-          data={tees.map((tee) => ({
-            label: tee.TeeName || '',
-            value: tee.TeeID.toString(),
-          }))}
-          labelField="label"
-          valueField="value"
-          value={selectedTee?.toString()}
-          onChange={(item) => setSelectedTee(Number(item.value))}
-          placeholder="Select a tee"
-          style={styles.dropdown}
-        />
-      </View>
-
+      <TextInput
+        style={styles.input}
+        placeholder="Search Friends"
+        value={playerName}
+        onChangeText={handleSearch}
+      />
+      {searchResults.length > 0 && (
+        <View style={styles.dropdownContainer}>
+          {searchResults.map((friend) => (
+            <TouchableOpacity key={friend.id} onPress={() => addPlayer(friend)}>
+              <Text style={styles.dropdownItem}>{friend.username}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+      <FlatList
+        data={selectedPlayers}
+        keyExtractor={(item) => item.id.toString()}
+        renderItem={({ item }) => (
+          <View style={styles.playerItemContainer}>
+            <Text style={styles.playerItem}>{item.username}</Text>
+            <TouchableOpacity onPress={() => removePlayer(item.id)}>
+              <Text style={styles.removeButton}>X</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      />
+      <Dropdown
+        data={tees.map((tee) => ({ label: tee.TeeName, value: tee.TeeID.toString() }))}
+        labelField="label"
+        valueField="value"
+        value={selectedTee?.toString()}
+        onChange={(item) => setSelectedTee(Number(item.value))}
+        placeholder="Select a tee"
+        style={styles.dropdown}
+      />
       <Button
         title={loading ? 'Adding Round...' : 'Go to Play Round'}
         onPress={handleAddRound}
@@ -146,41 +176,15 @@ const AddPlayersScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'flex-start',
-    alignItems: 'center',
-    padding: 16,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 16,
-  },
-  text: {
-    fontSize: 16,
-    marginBottom: 16,
-  },
-  formContainer: {
-    width: '100%',
-    marginBottom: 16, // Space between form and button
-  },
-  input: {
-    width: '100%',
-    padding: 10,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    marginBottom: 8, // Space between input and dropdown
-  },
-  dropdown: {
-    width: '100%',
-    height: 50,
-    borderColor: '#ccc',
-    borderWidth: 1,
-    borderRadius: 8,
-    marginTop: 8,
-  },
+  container: { flex: 1, padding: 16 },
+  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 16 },
+  input: { padding: 10, borderWidth: 1, borderColor: '#ccc', borderRadius: 8, marginBottom: 8 },
+  dropdownContainer: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, backgroundColor: '#fff' },
+  dropdownItem: { padding: 10, borderBottomWidth: 1, borderBottomColor: '#ddd' },
+  playerItemContainer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 10 },
+  playerItem: { fontSize: 16 },
+  removeButton: { color: 'red', fontWeight: 'bold', marginLeft: 10 },
+  dropdown: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, marginTop: 8 },
 });
 
 export default AddPlayersScreen;

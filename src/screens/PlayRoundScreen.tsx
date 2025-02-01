@@ -7,8 +7,8 @@ import HoleModal from '../components/HoleModal';
 type Score = {
   hole: number;
   score: number | null;
-  player: string; // Using `player` instead of `player_id`
-  profiles?: { username: string } | null; // Ensure `profiles` is an object or null
+  player: string;
+  profiles: { username: string };
 };
 
 
@@ -38,25 +38,23 @@ const PlayRoundScreen = () => {
     const fetchScores = async () => {
       setLoading(true);
       try {
-        const { data, error } = await supabase
+        const { data: scoresData, error } = await supabase
           .from('scores')
           .select('hole, score, player, profiles(username)')
           .eq('round_id', RoundID)
-          .order('hole', { ascending: true });
-
+          .order('hole', { ascending: true }) as unknown as { data: Score[]; error: any };
+    
         if (error) {
           console.error('Error fetching scores:', error);
           Alert.alert('Error', 'Failed to load scores.');
           return;
         }
-
-        // Fix: Ensure profiles is an object, not an array
+    
         const scoresByPlayer: { [key: string]: PlayerScores } = {};
-        data.forEach((score) => {
+        scoresData.forEach((score) => {
           const playerId = score.player;
-          const playerName = score.profiles?.username ?? 'Unknown Player';
-// Fix: Use optional chaining
-
+          const playerName = score.profiles.username;
+    
           if (!scoresByPlayer[playerId]) {
             scoresByPlayer[playerId] = {
               player_id: playerId,
@@ -66,7 +64,7 @@ const PlayRoundScreen = () => {
           }
           scoresByPlayer[playerId].scores.push(score);
         });
-
+    
         setPlayerScores(Object.values(scoresByPlayer));
       } catch (err) {
         console.error('Unexpected error:', err);
@@ -75,6 +73,7 @@ const PlayRoundScreen = () => {
         setLoading(false);
       }
     };
+    
 
     fetchScores();
   }, [RoundID]);
@@ -91,11 +90,6 @@ const PlayRoundScreen = () => {
 
   const handleSaveScore = async (holeNumber: number, player: string, newScore: number) => {
     try {
-      console.log("adding player score")
-      console.log(newScore)
-      console.log(RoundID)
-      console.log(holeNumber)
-      console.log(player)
       const { error } = await supabase
         .from('scores')
         .update({ score: newScore })

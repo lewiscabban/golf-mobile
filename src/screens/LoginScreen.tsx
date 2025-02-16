@@ -1,35 +1,49 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Button, Alert } from 'react-native';
 import { supabase } from '../supabase/supabaseClient';
+import { FontAwesome } from '@expo/vector-icons';
+import { CommonActions, NavigationProp, useNavigation } from '@react-navigation/native';
+
+type RootStackParamList = {
+  Home: undefined;
+  Login: undefined;
+  Signup: undefined;
+};
 
 const LoginScreen = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [emailError, setEmailError] = useState(false);
+  const [passwordError, setPasswordError] = useState(false);
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
   const handleLogin = async () => {
+    setEmailError(!email);
+    setPasswordError(!password);
+
+    if (!email || !password) {
+      return;
+    }
+    
     setLoading(true);
-  
-    // Authenticate the user
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
     setLoading(false);
-  
+
     if (authError) {
-      Alert.alert('Login Failed', authError.message);
+      Alert.alert('Login Failed', 'Username or password incorrect');
       return;
     }
-  
-    // Get the authenticated user's details
+
     const user = authData?.user;
     if (!user) {
-      Alert.alert('Login Failed', 'No user found.');
+      Alert.alert('Login Failed', 'Username or password incorrect');
       return;
     }
-  
-    // Check if the user is marked for deletion
+
     const { data: profileData, error: profileError } = await supabase
       .from('profiles')
       .select('to_be_deleted')
@@ -38,45 +52,68 @@ const LoginScreen = () => {
   
     if (profileError) {
       console.error('Error fetching profile:', profileError);
-      Alert.alert('Login Failed', 'Unable to fetch user profile.');
       return;
     }
   
     if (profileData?.to_be_deleted) {
-      Alert.alert(
-        'Account Locked',
-        'Your account has been marked for deletion. Please contact support if you believe this is an error.'
-      );
-  
-      // Log the user out immediately
+      Alert.alert('Account Locked', 'Your account has been marked for deletion.');
       await supabase.auth.signOut();
       return;
     }
-  
-    // Proceed if the account is not marked for deletion
-    Alert.alert('Login Successful', 'Welcome back!');
   };
-  
+
+  const handleCreateAccount = async () => {
+      navigation.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [{ name: 'Home' }, { name: 'Signup' }],
+        })
+      );
+  }
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Login</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
-        autoCapitalize="none"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
-      <Button title={loading ? 'Logging in...' : 'Login'} onPress={handleLogin} disabled={loading} />
+      <View style={styles.card}>
+        <Text style={styles.title}>Sign in to your account</Text>
+        <TouchableOpacity style={styles.authButton}>
+          <FontAwesome name="google" size={20} color="#EA4335" />
+          <Text style={styles.authText}>Sign in with Google</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.authButton}>
+          <FontAwesome name="apple" size={20} color="#000" />
+          <Text style={styles.authText}>Sign in with Apple</Text>
+        </TouchableOpacity>
+        <Text style={styles.orText}>Or continue with Email</Text>
+        <TextInput
+          style={[styles.input, emailError && styles.inputError]}
+          placeholder="Email address"
+          value={email}
+          onChangeText={text => { setEmail(text); setEmailError(false); }}
+          keyboardType="email-address"
+          autoCapitalize="none"
+        />
+        {emailError && <Text style={styles.errorText}>Please enter your email</Text>}
+        <TextInput
+          style={[styles.input, passwordError && styles.inputError]}
+          placeholder="Password"
+          value={password}
+          onChangeText={text => { setPassword(text); setPasswordError(false); }}
+          secureTextEntry
+        />
+        {passwordError && <Text style={styles.errorText}>Please enter your password</Text>}
+        <TouchableOpacity onPress={() => console.log('Forgot password clicked!')}>
+          <Text style={styles.forgotText}>Forgot password?</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.loginButton} onPress={handleLogin} disabled={loading}>
+          <Text style={styles.loginButtonText}>{loading ? 'Logging in...' : 'Login'}</Text>
+        </TouchableOpacity>
+        <View style={styles.signupContainer}>
+          <Text style={styles.signupText}>Not a member?</Text>
+          <TouchableOpacity onPress={handleCreateAccount} disabled={loading}>
+            <Text style={styles.signupLink}>Create an account</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
     </View>
   );
 };
@@ -86,19 +123,88 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 16,
+    backgroundColor: '#28a745',
+    padding: 20,
+  },
+  card: {
+    width: '100%',
+    maxWidth: 400,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 5,
   },
   title: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: 'bold',
-    marginBottom: 16,
+    marginBottom: 20,
+  },
+  authButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f5f5f5',
+    padding: 12,
+    borderRadius: 8,
+    width: '100%',
+    marginBottom: 10,
+  },
+  authText: {
+    marginLeft: 10,
+    fontSize: 16,
+  },
+  orText: {
+    marginVertical: 10,
+    color: '#666',
   },
   input: {
-    width: '80%',
-    padding: 10,
+    width: '100%',
+    padding: 12,
     borderWidth: 1,
-    borderRadius: 5,
-    marginBottom: 16,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    marginBottom: 10,
+  },
+  inputError: {
+    borderColor: 'red',
+  },
+  errorText: {
+    color: 'red',
+    marginBottom: 10,
+  },
+  forgotText: {
+    color: '#007bff',
+    marginBottom: 10,
+  },
+  loginButton: {
+    backgroundColor: '#000',
+    padding: 15,
+    borderRadius: 8,
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  loginButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  signupContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  signupText: {
+    color: '#666',
+    marginRight: 5,
+  },
+  signupLink: {
+    color: '#007bff',
+    fontWeight: 'bold',
   },
 });
 

@@ -12,9 +12,9 @@ const Stack = createNativeStackNavigator();
 
 const LoggedOutNavigator = () => (
   <Stack.Navigator>
-    <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
-    <Stack.Screen name="Login" component={LoginScreen} />
-    <Stack.Screen name="Signup" component={SignupScreen} />
+    <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false, headerBackTitle: 'Home' }} />
+    <Stack.Screen name="Login" component={LoginScreen} options={{ headerBackTitle: 'Home' }} />
+    <Stack.Screen name="Signup" component={SignupScreen} options={{ headerBackTitle: 'Home' }} />
   </Stack.Navigator>
 );
 

@@ -34,3 +34,10 @@ yarn-error.*
 
 # typescript
 *.tsbuildinfo
+
+bin/
+clubs/
+courses/
+lib/
+pyvenv.cfg
+getData.py

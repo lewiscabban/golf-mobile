@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Button, StyleSheet, TextInput, Alert, FlatList, TouchableOpacity } from 'react-native';
-import { Dropdown } from 'react-native-element-dropdown';
+import { 
+  View, Text, StyleSheet, TextInput, Alert, FlatList, 
+  TouchableOpacity, ActivityIndicator, TouchableWithoutFeedback, Keyboard 
+} from 'react-native';
 import { useNavigation, NavigationProp, useRoute } from '@react-navigation/native';
 import { supabase } from '../supabase/supabaseClient';
-import { TeeRow } from '../types/supabase';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 
 type ProfileStackParamList = {
   AddPlayers: { ClubID: number; CourseID: number };
@@ -19,13 +21,11 @@ const AddPlayersScreen = () => {
   const [playerName, setPlayerName] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [selectedPlayers, setSelectedPlayers] = useState<any[]>([]);
-  const [tees, setTees] = useState<TeeRow[]>([]);
-  const [selectedTee, setSelectedTee] = useState<number | undefined>(undefined);
   const [loading, setLoading] = useState(false);
+  const [isDropdownVisible, setDropdownVisible] = useState(false);
 
   useEffect(() => {
     fetchFriends();
-    fetchTees();
     getCurrentUser();
   }, []);
 
@@ -53,11 +53,6 @@ const AddPlayersScreen = () => {
     setFriends(friendProfiles || []);
   };
 
-  const fetchTees = async () => {
-    const { data, error } = await supabase.from('tees').select('*').eq('CourseID', CourseID);
-    if (!error) setTees(data || []);
-  };
-
   const getCurrentUser = async () => {
     const { data: userData } = await supabase.auth.getUser();
     if (userData?.user) {
@@ -77,12 +72,14 @@ const AddPlayersScreen = () => {
     setPlayerName(text);
     if (!text.trim()) {
       setSearchResults([]);
+      setDropdownVisible(false);
       return;
     }
     const filtered = friends.filter((friend) =>
       friend.username.toLowerCase().includes(text.toLowerCase())
     );
     setSearchResults(filtered.slice(0, 10));
+    setDropdownVisible(true);
   };
 
   const addPlayer = (player: any) => {
@@ -91,6 +88,7 @@ const AddPlayersScreen = () => {
     }
     setPlayerName('');
     setSearchResults([]);
+    setDropdownVisible(false);
   };
 
   const removePlayer = (playerId: number) => {
@@ -98,11 +96,6 @@ const AddPlayersScreen = () => {
   };
 
   const handleAddRound = async () => {
-    if (selectedTee === undefined) {
-      Alert.alert('Validation Error', 'Please select a tee.');
-      return;
-    }
-
     setLoading(true);
 
     try {
@@ -118,18 +111,10 @@ const AddPlayersScreen = () => {
         return;
       }
 
-      const tee = tees.find((t) => t.TeeID === selectedTee);
-      if (!tee) {
-        Alert.alert('Error', 'Selected tee data not found.');
-        return;
-      }
-
       const scoresToInsert = selectedPlayers.flatMap((player) =>
         Array.from({ length: 18 }, (_, i) => i + 1)
-          .filter((hole) => (tee as Record<string, any>)[`Length${hole}`] !== null)
           .map((hole) => ({
             round_id: roundData.id,
-            tee_id: selectedTee,
             player: player.id,
             hole,
           }))
@@ -144,67 +129,160 @@ const AddPlayersScreen = () => {
 
       navigation.navigate('PlayRound', { RoundID: roundData.id });
     } catch (err) {
-      console.error('Unexpected error:', err);
-      Alert.alert('Error', 'Something went wrong. Please try again.');
+      Alert.alert('Error', 'Something went wrong.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Add Players</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Search Friends"
-        value={playerName}
-        onChangeText={handleSearch}
-      />
-      {searchResults.length > 0 && (
-        <View style={styles.dropdownContainer}>
-          {searchResults.map((friend) => (
-            <TouchableOpacity key={friend.id} onPress={() => addPlayer(friend)}>
-              <Text style={styles.dropdownItem}>{friend.username}</Text>
-            </TouchableOpacity>
-          ))}
+    <TouchableWithoutFeedback onPress={() => { setDropdownVisible(false); Keyboard.dismiss(); }}>
+      <View style={styles.container}>
+        <Text style={styles.title}>Add Players</Text>
+        <View style={styles.inputWrapper}>
+          <TextInput
+            style={styles.input}
+            placeholder="Search Friends"
+            value={playerName}
+            onChangeText={handleSearch}
+            onFocus={() => setDropdownVisible(true)}
+          />
+          {isDropdownVisible && searchResults.length > 0 && (
+            <FlatList
+            data={searchResults}
+            keyExtractor={(item) => item.id.toString()}
+            style={styles.dropdownContainer}
+            renderItem={({ item }) => (
+              <View style={styles.addPlayerItemContainer}>
+                <TouchableOpacity onPress={() => addPlayer(item)} style={styles.addPlayerButton}>
+                  <View style={styles.addPlayerContent}>
+                    <Text style={styles.dropdownItem}>{item.username}</Text>
+                    <Icon name="add" size={24} color="#211071" />
+                  </View>
+                </TouchableOpacity>
+              </View>
+            )}
+            keyboardShouldPersistTaps="handled"
+          />          
+          
+          )}
         </View>
-      )}
-      <FlatList
-        data={selectedPlayers}
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={({ item }) => (
-          <View style={styles.playerItemContainer}>
-            <Text style={styles.playerItem}>{item.username}</Text>
-            <TouchableOpacity onPress={() => removePlayer(item.id)}>
-              <Text style={styles.removeButton}>X</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      />
-      <Dropdown
-        data={tees.map((tee) => ({ label: tee.TeeName, value: tee.TeeID.toString() }))}
-        labelField="label"
-        valueField="value"
-        value={selectedTee?.toString()}
-        onChange={(item) => setSelectedTee(Number(item.value))}
-        placeholder="Select a tee"
-        style={styles.dropdown}
-      />
-      <Button title={loading ? 'Adding Round...' : 'Go to Play Round'} onPress={handleAddRound} disabled={loading || selectedTee === undefined} />
-    </View>
+        <FlatList
+          data={selectedPlayers}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={({ item }) => (
+            <View style={styles.playerItemContainer}>
+              <Text style={styles.playerItem}>{item.username}</Text>
+              <TouchableOpacity onPress={() => removePlayer(item.id)}>
+                <Icon name="delete" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+          )}
+        />
+        <TouchableOpacity style={styles.button} onPress={handleAddRound} disabled={loading}>
+          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Go to Play Round</Text>}
+        </TouchableOpacity>
+      </View>
+    </TouchableWithoutFeedback>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
-  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 16 },
-  input: { padding: 10, borderWidth: 1, borderColor: '#ccc', borderRadius: 8, marginBottom: 8 },
-  dropdownContainer: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, backgroundColor: '#fff' },
-  dropdownItem: { padding: 10, borderBottomWidth: 1, borderBottomColor: '#ddd' },
-  playerItemContainer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 10 },
-  playerItem: { fontSize: 16 },
-  removeButton: { color: 'red', fontWeight: 'bold', marginLeft: 10 },
-  dropdown: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, marginTop: 8 },
+  container: {
+    flex: 1,
+    padding: 16,
+    backgroundColor: '#f9fafb',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  input: {
+    height: 50,
+    borderBottomWidth: 1,
+    borderColor: '#211071',
+    paddingHorizontal: 10,
+    marginBottom: 10,
+    width: '100%',
+    color: '#211071',
+  },
+  inputWrapper: {
+    position: 'relative'
+  },
+  dropdownContainer: {
+    position: 'absolute',
+    top: 50,
+    left: 0,
+    right: 0,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    maxHeight: 200,
+    overflow: 'hidden',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    zIndex: 1000,
+  },
+  dropdownItem: {
+    padding: 16,
+    color: '#211071',
+  },
+  playerItemContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    marginVertical: 4,
+  },
+  addPlayerItemContainer: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
+  },
+  addPlayerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  playerItem: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#3b3b98',
+  },
+  addPlayerButton: {
+    width: '100%',
+    padding: 10,
+  },
+  removeButton: {
+    color: 'red',
+    fontWeight: 'bold',
+  },
+  dropdown: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    marginBottom: 10,
+    backgroundColor: '#fff',
+  },
+  button: {
+    backgroundColor: '#3b3b98',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
 });
 
 export default AddPlayersScreen;

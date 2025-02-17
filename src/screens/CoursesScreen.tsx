@@ -2,11 +2,18 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { useRoute, RouteProp, NavigationProp, useNavigation } from '@react-navigation/native';
 import { supabase } from '../supabase/supabaseClient'; // Adjust the path to your Supabase client
-import { CourseRow } from '../types/supabase';
+
+type Courses = {
+  CourseID: string,
+  CourseName: String,
+  ClubID: string,
+  ClubName: String,
+  NumHoles: number,
+}
 
 type ProfileStackParamList = {
-  Courses: { club: { ClubID: number; ClubName: string } };
-  AddPlayers: { ClubID: number; CourseID: number };
+  Courses: { club: { ClubID: string; ClubName: string } };
+  AddPlayers: { ClubID: string; CourseID: string };
 };
 
 const CoursesScreen = () => {
@@ -14,16 +21,17 @@ const CoursesScreen = () => {
   const navigation = useNavigation<NavigationProp<ProfileStackParamList>>();
   const { club } = route.params;
 
-  const [courses, setCourses] = useState<CourseRow[]>([]);
+  const [courses, setCourses] = useState<Courses[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // Fetch courses from Supabase for the selected club
     const fetchCourses = async () => {
       setLoading(true);
+      console.log("club: " + club.ClubID)
       const { data: coursesData, error } = await supabase
         .from('courses')
-        .select('*')
+        .select('ClubID::text, ClubName, CourseID::text, CourseName, NumHoles')
         .eq('ClubID', club.ClubID); // Filter by the selected club's ID
 
       if (error) {
@@ -37,7 +45,7 @@ const CoursesScreen = () => {
     fetchCourses();
   }, [club.ClubID]);
 
-  const renderItem = ({ item }: { item: CourseRow }) => (
+  const renderItem = ({ item }: { item: Courses }) => (
     <TouchableOpacity
       style={styles.item}
       onPress={() => {

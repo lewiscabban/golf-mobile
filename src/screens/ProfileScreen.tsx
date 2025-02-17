@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity, TextInput } from 'react-native';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { supabase } from '../supabase/supabaseClient';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 
 type Clubs = {
   ClubID: string,
@@ -51,16 +52,20 @@ const ProfileScreen = () => {
       style={styles.item}
       onPress={() => navigation.navigate('Courses', { club: item })}
     >
-      <Text style={styles.itemText}>{item.ClubName}</Text>
+      <View style={styles.itemRow}>
+        <Text style={styles.itemText}>{item.ClubName}</Text>
+        <Icon name="chevron-right" size={24} color="#666" />
+      </View>
     </TouchableOpacity>
   );
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Clubs</Text>
+      <Text style={styles.title}>Select a Club</Text>
       <TextInput
         style={styles.searchInput}
         placeholder="Search Clubs"
+        placeholderTextColor="#999" // Lighter placeholder text color
         value={searchQuery}
         onChangeText={handleSearch}
       />
@@ -82,7 +87,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
-    backgroundColor: '#fff',
+    backgroundColor: '#f9fafb', // Light background color
   },
   title: {
     fontSize: 24,
@@ -91,26 +96,43 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   searchInput: {
-    height: 40,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
+    height: 50, // Adjust height to match FlatList item height
+    borderBottomWidth: 1,
+    borderColor: '#211071', // Set border color to #211071
+    // borderRadius: 8,
     paddingHorizontal: 10,
     marginBottom: 10,
+    width: '100%', // Ensures the input takes up the full width
+    // backgroundColor: '#fff', // Set background to white
+    color: '#211071', // Lighter text color
   },
   list: {
     paddingBottom: 16,
   },
   item: {
-    backgroundColor: '#f9f9f9',
+    backgroundColor: '#fff',
     padding: 16,
     marginVertical: 8,
-    borderRadius: 8,
+    borderRadius: 12,
+    flexDirection: 'row', 
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
     elevation: 2,
+  },
+  itemRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flex: 1, // Ensures full width
   },
   itemText: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: '600',
+    color: '#3b3b98', // A deep blue/purple color for contrast
   },
 });
 

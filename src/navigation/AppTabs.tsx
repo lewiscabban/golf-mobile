@@ -16,11 +16,11 @@ const ProfileStack = createNativeStackNavigator();
 
 const ProfileStackScreen = () => {
     return (
-      <ProfileStack.Navigator>
+      <ProfileStack.Navigator screenOptions={{ headerBackButtonDisplayMode: 'minimal' }}>
         <ProfileStack.Screen name="Profile" component={ProfileScreen} />
         <ProfileStack.Screen name="Courses" component={CoursesScreen} />
         <ProfileStack.Screen name="AddPlayers" component={AddPlayersScreen} />
-        <ProfileStack.Screen name="PlayRound" component={PlayRoundScreen} options={{headerLeft: () => null,}} />
+        <ProfileStack.Screen name="PlayRound" component={PlayRoundScreen} options={{headerLeft: () => null }} />
         <ProfileStack.Screen name="Results" component={ResultsScreen} />
       </ProfileStack.Navigator>
     );
@@ -28,7 +28,7 @@ const ProfileStackScreen = () => {
 
 const DasthoardStackScreen = () => {
     return (
-      <ProfileStack.Navigator>
+      <ProfileStack.Navigator screenOptions={{ headerBackButtonDisplayMode: 'minimal' }}>
         <ProfileStack.Screen name="Dashboard" component={DashboardScreen} />
         <ProfileStack.Screen name="Friends" component={FriendsScreen} />
       </ProfileStack.Navigator>

@@ -2,8 +2,60 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { supabase } from '../supabase/supabaseClient';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
-import { RoundsRow, ScoresRow, CoursesRow } from '../types/supabase';
+import { ScoresRow } from '../types/supabase';
 import Ionicons from 'react-native-vector-icons/Ionicons'; // Import Ionicons for the friends icon
+
+type Round = {
+  course_id: string
+  created_at: string
+  id: number
+}
+
+type Courses = {
+  ClubID: string
+  ClubName: string
+  CourseID: string
+  CourseName: string
+  MeasureMeters: number
+  NumHoles: number
+  Par1: number | null
+  Par10: number | null
+  Par11: number | null
+  Par12: number | null
+  Par13: number | null
+  Par14: number | null
+  Par15: number | null
+  Par16: number | null
+  Par17: number | null
+  Par18: number | null
+  Par2: number | null
+  Par3: number | null
+  Par4: number | null
+  Par5: number | null
+  Par6: number | null
+  Par7: number | null
+  Par8: number | null
+  Par9: number | null
+  ParW1: number | null
+  ParW10: number | null
+  ParW11: number | null
+  ParW12: number | null
+  ParW13: number | null
+  ParW14: number | null
+  ParW15: number | null
+  ParW16: number | null
+  ParW17: number | null
+  ParW18: number | null
+  ParW2: number | null
+  ParW3: number | null
+  ParW4: number | null
+  ParW5: number | null
+  ParW6: number | null
+  ParW7: number | null
+  ParW8: number | null
+  ParW9: number | null
+  TimestampUpdated: number | null
+}
 
 type DashboardStackParamList = {
   ProfileStack: { screen: string; params: { RoundID: number } };
@@ -12,19 +64,22 @@ type DashboardStackParamList = {
 
 const DashboardScreen = () => {
   const navigation = useNavigation<NavigationProp<DashboardStackParamList>>();
-  const [rounds, setRounds] = useState<RoundsRow[]>([]);
+  const [rounds, setRounds] = useState<Round[]>([]);
   const [scoresMap, setScoresMap] = useState<Record<number, number>>({});
+  const [holesPlayedMap, setHolesPlayedMap] = useState<Record<number, number>>({});
   const [parMap, setParMap] = useState<Record<number, number>>({});
-  const [courseNames, setCourseNames] = useState<Record<number, string>>({});
-  const [clubNames, setClubNames] = useState<Record<number, string>>({});
-  const [courseClubMap, setCourseClubMap] = useState<Record<number, number>>({});
+  const [courseNames, setCourseNames] = useState<Record<string, string>>({});
+  const [clubNames, setClubNames] = useState<Record<string, string>>({});
+  const [courseClubMap, setCourseClubMap] = useState<Record<string, string>>({});
   const [playersMap, setPlayersMap] = useState<Record<number, string[]>>({}); // For storing player names for each round
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchRounds = async () => {
+    // TODO: split up per player
     setLoading(true);
-    const { data, error } = await supabase.from('rounds').select('*');
+    const { data, error } = await supabase.from('rounds')
+      .select('course_id::text, created_at, id');
 
     if (error) {
       console.error('Error fetching rounds:', error);
@@ -39,26 +94,28 @@ const DashboardScreen = () => {
     setRefreshing(false);
   };
 
-  const fetchCourseAndClubNames = async (rounds: RoundsRow[]) => {
+  const fetchCourseAndClubNames = async (rounds: Round[]) => {
     const courseIds = rounds.map((round) => round.course_id).filter((id) => id != null);
 
     if (courseIds.length > 0) {
+      console.log("ids: " + courseIds)
       const { data: coursesData, error: coursesError } = await supabase
         .from('courses')
-        .select('CourseID, CourseName, ClubID')
+        .select('CourseID::text, CourseName, ClubID::text')
         .in('CourseID', courseIds);
 
       if (coursesError) {
+        console.log(courseIds)
         console.error('Error fetching course names:', coursesError);
         Alert.alert('Error', 'Failed to fetch course names.');
         return;
       }
 
-      const courseNameMap: Record<number, string> = {};
-      const clubIdSet = new Set<number>();
-      const courseClubMap: Record<number, number> = {};
+      const courseNameMap: Record<string, string> = {};
+      const clubIdSet = new Set<string>();
+      const courseClubMap: Record<string, string> = {};
 
-      (coursesData as Partial<CoursesRow>[]).forEach((course) => {
+      (coursesData as Partial<Courses>[]).forEach((course) => {
         if (course.CourseID && course.CourseName) {
           courseNameMap[course.CourseID] = course.CourseName;
           if (course.ClubID) {
@@ -74,7 +131,7 @@ const DashboardScreen = () => {
       if (clubIdSet.size > 0) {
         const { data: clubsData, error: clubsError } = await supabase
           .from('clubs')
-          .select('ClubID, ClubName')
+          .select('ClubID::text, ClubName')
           .in('ClubID', Array.from(clubIdSet));
 
         if (clubsError) {
@@ -83,7 +140,7 @@ const DashboardScreen = () => {
           return;
         }
 
-        const clubNameMap: Record<number, string> = {};
+        const clubNameMap: Record<string, string> = {};
         clubsData?.forEach((club) => {
           clubNameMap[club.ClubID] = club.ClubName;
         });
@@ -112,13 +169,19 @@ const DashboardScreen = () => {
     return scores.reduce((total, score) => total + (score.score || 0), 0);
   };
 
-  const fetchAllScoresAndPars = async (rounds: RoundsRow[]) => {
+  const calculateHolesPlayed = (scores: ScoresRow[]): number => {
+    return scores.filter(score => score.score !== null).length;
+  };
+
+  const fetchAllScoresAndPars = async (rounds: Round[]) => {
+    const holesPlayed: Record<number, number> = {};
     const scores: Record<number, number> = {};
     const pars: Record<number, number> = {};
 
     for (const round of rounds) {
       const roundScores = await fetchScores(round.id);
       scores[round.id] = calculateTotalScore(roundScores);
+      holesPlayed[round.id] = calculateHolesPlayed(roundScores);
 
       if (round.course_id) {
         const coursePar = await fetchCoursePar(round.course_id, roundScores);
@@ -126,11 +189,12 @@ const DashboardScreen = () => {
       }
     }
 
+    setHolesPlayedMap(holesPlayed);
     setScoresMap(scores);
     setParMap(pars);
   };
 
-  const fetchPlayers = async (rounds: RoundsRow[]) => {
+  const fetchPlayers = async (rounds: Round[]) => {
     const playersMap: Record<number, string[]> = {};
 
     for (const round of rounds) {
@@ -164,7 +228,7 @@ const DashboardScreen = () => {
     setPlayersMap(playersMap);
   };
 
-  const fetchCoursePar = async (courseId: number, scores: ScoresRow[]): Promise<number> => {
+  const fetchCoursePar = async (courseId: string, scores: ScoresRow[]): Promise<number> => {
     const { data, error } = await supabase
       .from('courses')
       .select('Par1, Par2, Par3, Par4, Par5, Par6, Par7, Par8, Par9, Par10, Par11, Par12, Par13, Par14, Par15, Par16, Par17, Par18')
@@ -176,7 +240,7 @@ const DashboardScreen = () => {
       return 0;
     }
 
-    const course = data as CoursesRow;
+    const course = data as Courses;
     const holePars: Record<number, number | null> = {
       1: course.Par1,
       2: course.Par2,
@@ -220,11 +284,12 @@ const DashboardScreen = () => {
     await fetchRounds();
   };
 
-  const renderRound = ({ item }: { item: RoundsRow }) => {
+  const renderRound = ({ item }: { item: Round }) => {
     const totalScore = scoresMap[item.id] || 0;
+    const holesPlayed = holesPlayedMap[item.id] || 0;
     const totalPar = parMap[item.id] || 0;
     const golfScore = totalPar > 0 ? totalScore - totalPar : 'Loading...'; //TODO: this will calculate for all players in the round need to make a score per player
-    const courseName = courseNames[item.course_id] || 'Loading...';
+    const courseName = courseNames[item.course_id] || 'Loading...'; //TODO: save course in map so can get course name, club name and numholes all at once.
     const clubId = item.course_id ? courseClubMap[item.course_id] : null;
     const clubName = clubId ? clubNames[clubId] : 'No Club';
     const players = playersMap[item.id]?.join(', ') || 'Loading...'; // Display player names
@@ -234,10 +299,11 @@ const DashboardScreen = () => {
         style={styles.roundItem}
         onPress={() => handleNavigateToPlayRound(item.id)}
       >
-        <Text style={styles.roundText}>Course: {courseName}</Text>
         <Text style={styles.roundText}>Club: {clubName}</Text>
+        <Text style={styles.roundText}>Course: {courseName}</Text>
         <Text style={styles.roundText}>Players: {players}</Text>
-        <Text style={styles.roundText}>Golf Score: {golfScore}</Text>
+        <Text style={styles.roundText}>Golf Score: {totalScore}</Text>
+        <Text style={styles.roundText}>Holes Played: {holesPlayed}/18</Text>
       </TouchableOpacity>
     );
   };

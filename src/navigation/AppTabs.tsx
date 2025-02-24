@@ -10,12 +10,12 @@ import PlayRoundScreen from '../screens/PlayRoundScreen';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import ResultsScreen from '../screens/ResultsScreen';
 import FriendsScreen from '../screens/FriendsScreen';
-import { Button } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 
 const Tab = createBottomTabNavigator();
 const ProfileStack = createNativeStackNavigator();
+const DashboardStack = createNativeStackNavigator();
+const SettingsStack = createNativeStackNavigator();
 
 // Define the types for your navigation stack
 type ProfileStackParamList = {
@@ -27,34 +27,49 @@ type ProfileStackParamList = {
 type NavigationProp = StackNavigationProp<ProfileStackParamList, "PlayRound">;
 
 const ProfileStackScreen = () => {
-    return (
-      <ProfileStack.Navigator screenOptions={{ headerBackButtonDisplayMode: 'minimal' }}>
-        <ProfileStack.Screen name="Profile" component={ProfileScreen} />
-        <ProfileStack.Screen name="Courses" component={CoursesScreen} />
-        <ProfileStack.Screen name="AddPlayers" component={AddPlayersScreen} />
-        <ProfileStack.Screen name="Results" component={ResultsScreen} />
-      </ProfileStack.Navigator>
-    );
-};  
+  return (
+    <ProfileStack.Navigator
+      screenOptions={{
+        headerBackButtonDisplayMode: 'minimal',
+        headerShadowVisible: false,
+      }}
+    >
+      <ProfileStack.Screen name="Profile" component={ProfileScreen} />
+      <ProfileStack.Screen name="Courses" component={CoursesScreen} />
+      <ProfileStack.Screen name="AddPlayers" component={AddPlayersScreen} />
+      <ProfileStack.Screen name="Results" component={ResultsScreen} />
+    </ProfileStack.Navigator>
+  );
+};
 
 const DasthoardStackScreen = () => {
     return (
-      <ProfileStack.Navigator screenOptions={{ headerBackButtonDisplayMode: 'minimal' }}>
-        <ProfileStack.Screen name="Dashboard" component={DashboardScreen} />
-        <ProfileStack.Screen name="Friends" component={FriendsScreen} />
-        <ProfileStack.Screen
+      <DashboardStack.Navigator
+        screenOptions={{
+          headerBackButtonDisplayMode: 'minimal',
+          headerShadowVisible: false,
+        }}
+      >
+        <DashboardStack.Screen name="Dashboard" component={DashboardScreen} />
+        <DashboardStack.Screen name="Friends" component={FriendsScreen} />
+        <DashboardStack.Screen
           name="PlayRound"
           component={PlayRoundScreen}
-          // options={{
-          //   headerLeft: () => {
-          //     const navigation = useNavigation<NavigationProp>();
-          //     return (
-          //       <Button title="Back" onPress={() => navigation.navigate("Dashboard")} />
-          //     );
-          //   },
-          // }}
         />
-      </ProfileStack.Navigator>
+      </DashboardStack.Navigator>
+    );
+};  
+
+const SettingsStackScreen = () => {
+    return (
+      <SettingsStack.Navigator
+        screenOptions={{
+          headerBackButtonDisplayMode: 'minimal',
+          headerShadowVisible: false,
+        }}
+      >
+        <SettingsStack.Screen name="Settings" component={SettingsScreen} />
+      </SettingsStack.Navigator>
     );
 };  
   
@@ -76,6 +91,7 @@ const AppTabs = () => {
           return <Ionicons name={iconName} size={size} color={color} />;
         },
         tabBarShowLabel: true,
+        tabBarStyle: {borderTopWidth: 0},
       })}
     >
       <Tab.Screen
@@ -90,7 +106,7 @@ const AppTabs = () => {
       />
       <Tab.Screen
         name="Settings"
-        component={SettingsScreen}
+        component={SettingsStackScreen}
         options={{ headerShown: false }}
       />
     </Tab.Navigator>

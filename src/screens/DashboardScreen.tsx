@@ -102,14 +102,12 @@ const DashboardScreen = () => {
     const courseIds = rounds.map((round) => round.course_id).filter((id) => id != null);
 
     if (courseIds.length > 0) {
-      console.log("ids: " + courseIds)
       const { data: coursesData, error: coursesError } = await supabase
         .from('courses')
         .select('CourseID::text, CourseName, ClubID::text')
         .in('CourseID', courseIds);
 
       if (coursesError) {
-        console.log(courseIds)
         console.error('Error fetching course names:', coursesError);
         Alert.alert('Error', 'Failed to fetch course names.');
         return;
@@ -179,10 +177,6 @@ const DashboardScreen = () => {
   const calculateHolesPlayed = (scores: ScoresRow[], player: ProfilesRow | null = null): number => {
     if (player) {
       scores = scores.filter(score => score.player === player.id)
-      for (let i = 0; i < scores.length; i++) {
-        console.log("Score Player:", scores[i].player, "| Comparing with:", player);
-      }
-      
     }
     return scores.filter(score => score.score !== null).length;
   };
@@ -347,9 +341,6 @@ const DashboardScreen = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Welcome to Your Dashboard!</Text>
-      <Text style={styles.subtitle}>Track your golf scores and manage your account here.</Text>
-
       {loading ? (
         <ActivityIndicator size="large" color="#0000ff" />
       ) : (
@@ -370,7 +361,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
-    paddingTop: 50,
     backgroundColor: '#fff',
   },
   title: {

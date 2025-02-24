@@ -4,6 +4,9 @@ import {
   TouchableOpacity, ActivityIndicator, TouchableWithoutFeedback, Keyboard 
 } from 'react-native';
 import { useNavigation, NavigationProp, useRoute } from '@react-navigation/native';
+import { CompositeNavigationProp } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { supabase } from '../supabase/supabaseClient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
@@ -12,8 +15,17 @@ type ProfileStackParamList = {
   PlayRound: { RoundID: number };
 };
 
+type DashboardTabParamList = {
+  Dashboard: { screen: string; params: { RoundID: number } };
+};
+
+type NavigationProps = CompositeNavigationProp<
+  StackNavigationProp<ProfileStackParamList>,
+  BottomTabNavigationProp<DashboardTabParamList>
+>;
+
 const AddPlayersScreen = () => {
-  const navigation = useNavigation<NavigationProp<ProfileStackParamList>>();
+  const navigation = useNavigation<NavigationProps>();
   const route = useRoute();
   const { ClubID, CourseID } = route.params as { ClubID: number; CourseID: number };
 
@@ -127,7 +139,10 @@ const AddPlayersScreen = () => {
         return;
       }
 
-      navigation.navigate('PlayRound', { RoundID: roundData.id });
+      navigation.navigate('Dashboard', {
+        screen: 'PlayRound',
+        params: { RoundID: roundData.id  },
+      });
     } catch (err) {
       Alert.alert('Error', 'Something went wrong.');
     } finally {

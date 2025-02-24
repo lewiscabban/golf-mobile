@@ -60,6 +60,7 @@ type Courses = {
 type DashboardStackParamList = {
   ProfileStack: { screen: string; params: { RoundID: number } };
   Friends: undefined; // Define the FriendRequests screen
+  PlayRound: { RoundID: number }; // Define the FriendRequests screen
 };
 
 const DashboardScreen = () => {
@@ -327,10 +328,7 @@ const DashboardScreen = () => {
   };
 
   const handleNavigateToPlayRound = (roundID: number) => {
-    navigation.navigate('ProfileStack', {
-      screen: 'PlayRound',
-      params: { RoundID: roundID },
-    });
+    navigation.navigate('PlayRound', { RoundID: roundID });
   };
 
   const navigateToFriendRequests = () => {

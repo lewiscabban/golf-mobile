@@ -10,9 +10,21 @@ import PlayRoundScreen from '../screens/PlayRoundScreen';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import ResultsScreen from '../screens/ResultsScreen';
 import FriendsScreen from '../screens/FriendsScreen';
+import { Button } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
 
 const Tab = createBottomTabNavigator();
 const ProfileStack = createNativeStackNavigator();
+
+// Define the types for your navigation stack
+type ProfileStackParamList = {
+  PlayRound: undefined;
+  Dashboard: undefined;
+};
+
+// Get the typed navigation prop
+type NavigationProp = StackNavigationProp<ProfileStackParamList, "PlayRound">;
 
 const ProfileStackScreen = () => {
     return (
@@ -20,7 +32,6 @@ const ProfileStackScreen = () => {
         <ProfileStack.Screen name="Profile" component={ProfileScreen} />
         <ProfileStack.Screen name="Courses" component={CoursesScreen} />
         <ProfileStack.Screen name="AddPlayers" component={AddPlayersScreen} />
-        <ProfileStack.Screen name="PlayRound" component={PlayRoundScreen} options={{headerLeft: () => null }} />
         <ProfileStack.Screen name="Results" component={ResultsScreen} />
       </ProfileStack.Navigator>
     );
@@ -31,6 +42,18 @@ const DasthoardStackScreen = () => {
       <ProfileStack.Navigator screenOptions={{ headerBackButtonDisplayMode: 'minimal' }}>
         <ProfileStack.Screen name="Dashboard" component={DashboardScreen} />
         <ProfileStack.Screen name="Friends" component={FriendsScreen} />
+        <ProfileStack.Screen
+          name="PlayRound"
+          component={PlayRoundScreen}
+          // options={{
+          //   headerLeft: () => {
+          //     const navigation = useNavigation<NavigationProp>();
+          //     return (
+          //       <Button title="Back" onPress={() => navigation.navigate("Dashboard")} />
+          //     );
+          //   },
+          // }}
+        />
       </ProfileStack.Navigator>
     );
 };  

@@ -78,8 +78,11 @@ const DashboardScreen = () => {
   const fetchRounds = async () => {
     // TODO: split up per player
     setLoading(true);
-    const { data, error } = await supabase.from('rounds')
-      .select('course_id::text, created_at, id');
+    const { data, error } = await supabase
+      .from('rounds')
+      .select('course_id::text, created_at, id')
+      .order('created_at', { ascending: false });
+
 
     if (error) {
       console.error('Error fetching rounds:', error);

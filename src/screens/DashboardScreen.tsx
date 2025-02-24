@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { supabase } from '../supabase/supabaseClient';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
-import { ScoresRow } from '../types/supabase';
+import { ScoresRow, ProfilesRow } from '../types/supabase';
 import Ionicons from 'react-native-vector-icons/Ionicons'; // Import Ionicons for the friends icon
 
 type Round = {
@@ -65,13 +65,13 @@ type DashboardStackParamList = {
 const DashboardScreen = () => {
   const navigation = useNavigation<NavigationProp<DashboardStackParamList>>();
   const [rounds, setRounds] = useState<Round[]>([]);
-  const [scoresMap, setScoresMap] = useState<Record<number, number>>({});
+  const [scoresMap, setScoresMap] = useState<Record<number, ScoresRow[]>>({});
   const [holesPlayedMap, setHolesPlayedMap] = useState<Record<number, number>>({});
   const [parMap, setParMap] = useState<Record<number, number>>({});
   const [courseNames, setCourseNames] = useState<Record<string, string>>({});
   const [clubNames, setClubNames] = useState<Record<string, string>>({});
   const [courseClubMap, setCourseClubMap] = useState<Record<string, string>>({});
-  const [playersMap, setPlayersMap] = useState<Record<number, string[]>>({}); // For storing player names for each round
+  const [playersMap, setPlayersMap] = useState<Record<number, ProfilesRow[]>>({}); // For storing player names for each round
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -168,37 +168,43 @@ const DashboardScreen = () => {
     return data as ScoresRow[];
   };
 
-  const calculateTotalScore = (scores: ScoresRow[]): number => {
+  const calculateTotalScore = (scores: ScoresRow[], player: ProfilesRow | null = null): number => {
+    if (player) {
+      scores = scores.filter(score => score.player === player.id)
+    }
     return scores.reduce((total, score) => total + (score.score || 0), 0);
   };
 
-  const calculateHolesPlayed = (scores: ScoresRow[]): number => {
+  const calculateHolesPlayed = (scores: ScoresRow[], player: ProfilesRow | null = null): number => {
+    if (player) {
+      scores = scores.filter(score => score.player === player.id)
+      for (let i = 0; i < scores.length; i++) {
+        console.log("Score Player:", scores[i].player, "| Comparing with:", player);
+      }
+      
+    }
     return scores.filter(score => score.score !== null).length;
   };
 
   const fetchAllScoresAndPars = async (rounds: Round[]) => {
-    const holesPlayed: Record<number, number> = {};
-    const scores: Record<number, number> = {};
+    const scores: Record<number, ScoresRow[]> = {};
     const pars: Record<number, number> = {};
 
     for (const round of rounds) {
-      const roundScores = await fetchScores(round.id);
-      scores[round.id] = calculateTotalScore(roundScores);
-      holesPlayed[round.id] = calculateHolesPlayed(roundScores);
+      scores[round.id] = await fetchScores(round.id);
 
       if (round.course_id) {
-        const coursePar = await fetchCoursePar(round.course_id, roundScores);
+        const coursePar = await fetchCoursePar(round.course_id, scores[round.id]);
         pars[round.id] = coursePar;
       }
     }
 
-    setHolesPlayedMap(holesPlayed);
     setScoresMap(scores);
     setParMap(pars);
   };
 
   const fetchPlayers = async (rounds: Round[]) => {
-    const playersMap: Record<number, string[]> = {};
+    const playersMap: Record<number, ProfilesRow[]> = {};
 
     for (const round of rounds) {
       const { data, error } = await supabase
@@ -211,11 +217,11 @@ const DashboardScreen = () => {
         continue;
       }
 
-      const playerIds = data?.map((score) => score.player);
+      const playerIds: string[] = data?.map((score) => score.player);
       if (playerIds?.length) {
         const { data: profilesData, error: profilesError } = await supabase
           .from('profiles')
-          .select('username')
+          .select('*')
           .in('id', playerIds);
 
         if (profilesError) {
@@ -223,8 +229,7 @@ const DashboardScreen = () => {
           continue;
         }
 
-        const playerNames = profilesData?.map((profile) => profile.username);
-        playersMap[round.id] = playerNames || [];
+        playersMap[round.id] = profilesData || [];
       }
     }
 
@@ -288,14 +293,10 @@ const DashboardScreen = () => {
   };
 
   const renderRound = ({ item }: { item: Round }) => {
-    const totalScore = scoresMap[item.id] || 0;
-    const holesPlayed = holesPlayedMap[item.id] || 0;
-    const totalPar = parMap[item.id] || 0;
-    const golfScore = totalPar > 0 ? totalScore - totalPar : 'Loading...'; //TODO: this will calculate for all players in the round need to make a score per player
     const courseName = courseNames[item.course_id] || 'Loading...'; //TODO: save course in map so can get course name, club name and numholes all at once.
     const clubId = item.course_id ? courseClubMap[item.course_id] : null;
     const clubName = clubId ? clubNames[clubId] : 'No Club';
-    const players = playersMap[item.id]?.join(', ') || 'Loading...'; // Display player names
+    const players = playersMap[item.id] || []; // Display player names
 
     return (
       <TouchableOpacity
@@ -304,10 +305,24 @@ const DashboardScreen = () => {
       >
         <Text style={styles.roundText}>Club: {clubName}</Text>
         <Text style={styles.roundText}>Course: {courseName}</Text>
-        <Text style={styles.roundText}>Players: {players}</Text>
+        {players.map((value, index) => {
+            return renderPlayersRound({"item": item, "player": value});
+          })}
+      </TouchableOpacity>
+    );
+  };
+
+  const renderPlayersRound = ({ item, player }: { item: Round, player: ProfilesRow}) => {
+    const totalScore = calculateTotalScore(scoresMap[item.id], player) || 0;
+    const holesPlayed = calculateHolesPlayed(scoresMap[item.id], player) || 0;
+    const totalPar = parMap[item.id] || 0;
+
+    return (
+      <View>
+        <Text style={styles.roundText}>Players: {player.username}</Text>
         <Text style={styles.roundText}>Golf Score: {totalScore}</Text>
         <Text style={styles.roundText}>Holes Played: {holesPlayed}/18</Text>
-      </TouchableOpacity>
+      </View>
     );
   };
 

@@ -8,6 +8,7 @@ export type TeeRow = Database['public']['Tables']['tees']['Row'];
 export type CoordinateRow = Database['public']['Tables']['coordinates']['Row'];
 export type RoundsRow = Database['public']['Tables']['rounds']['Row'];
 export type ScoresRow = Database['public']['Tables']['scores']['Row'];
+export type ProfilesRow = Database['public']['Tables']['profiles']['Row'];
 
 // Refer to Insert and Update types
 type CourseInsert = Database['public']['Tables']['courses']['Insert'];

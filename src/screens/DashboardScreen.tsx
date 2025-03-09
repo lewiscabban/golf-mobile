@@ -288,24 +288,49 @@ const DashboardScreen = () => {
   };
 
   const renderRound = ({ item }: { item: Round }) => {
-    const courseName = courseNames[item.course_id] || 'Loading...'; //TODO: save course in map so can get course name, club name and numholes all at once.
+    const courseName = courseNames[item.course_id] || 'ADD LATER';
     const clubId = item.course_id ? courseClubMap[item.course_id] : null;
-    const clubName = clubId ? clubNames[clubId] : 'No Club';
-    const players = playersMap[item.id] || []; // Display player names
-
+    const clubName = clubId ? clubNames[clubId] : 'ADD LATER';
+    const createdAt = new Date(item.created_at).toLocaleDateString(); // Format date
+    const players = playersMap[item.id] || []; // List of players
+  
     return (
-      <TouchableOpacity
-        style={styles.roundItem}
+      <TouchableOpacity 
+        style={styles.roundContainer} 
         onPress={() => handleNavigateToPlayRound(item.id)}
       >
-        <Text style={styles.roundText}>Club: {clubName}</Text>
-        <Text style={styles.roundText}>Course: {courseName}</Text>
-        {players.map((value, index) => {
-            return renderPlayersRound({"item": item, "player": value});
-          })}
+        <View style={styles.roundHeader}>
+          <Text style={styles.clubName}>{clubName}</Text>
+          <Text style={styles.roundInfo}>{createdAt} - {courseName} - 18 Holes</Text>
+        </View>
+  
+        <View style={styles.tableHeader}>
+          <Text style={styles.headerText}>Player</Text>
+          <Text style={styles.headerText}>Score</Text>
+          <Text style={styles.headerText}>Gross</Text>
+          <Text style={styles.headerText}>Par</Text>
+        </View>
+  
+        {players.map((player) => {
+          const totalScore = calculateTotalScore(scoresMap[item.id], player);
+          const grossScore = `+${(totalScore - (parMap[item.id] || 0))}`;
+          const totalPar = parMap[item.id];
+  
+          return (
+            <View key={player.id} style={styles.tableRow}>
+              <Text style={styles.rowText}>{player.username}</Text>
+              <Text style={styles.rowText}>{totalScore}</Text>
+              <Text style={styles.rowText}>{grossScore}</Text>
+              <Text style={styles.rowText}>{totalPar}</Text>
+            </View>
+          );
+        })}
+  
+        <Ionicons name="chevron-forward" size={24} color="#000" style={styles.arrowIcon} />
       </TouchableOpacity>
     );
   };
+  
 
   const renderPlayersRound = ({ item, player }: { item: Round, player: ProfilesRow}) => {
     const totalScore = calculateTotalScore(scoresMap[item.id], player) || 0;
@@ -391,6 +416,61 @@ const styles = StyleSheet.create({
   headerButton: {
     paddingRight: 10,
     paddingVertical: 10,
+  },
+  roundContainer: {
+    backgroundColor: '#fff',
+    padding: 16,
+    marginVertical: 8,
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 2, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+    position: 'relative', // For the icon positioning
+  },
+  roundHeader: {
+    marginBottom: 8,
+  },
+  clubName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 2,
+  },
+  roundInfo: {
+    fontSize: 14,
+    color: '#666',
+  },
+  tableHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    borderBottomWidth: 0, // Only this border remains
+    borderBottomColor: '#ccc',
+    paddingBottom: 4,
+    marginBottom: 4,
+  },
+  headerText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#4CAF50',
+    flex: 1,
+    textAlign: 'center',
+  },
+  tableRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 4,
+  },
+  rowText: {
+    fontSize: 14,
+    flex: 1,
+    textAlign: 'center',
+  },
+  arrowIcon: {
+    position: 'absolute',
+    right: 10,
+    top: '50%',
+    transform: [{ translateY: -12 }],
   },
 });
 

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert, StyleSheet } from 'react-native';
-import { useRoute, RouteProp } from '@react-navigation/native';
+import { View, Text, ScrollView, TouchableOpacity, Alert, StyleSheet, Modal, Pressable } from 'react-native';
+import { useRoute, RouteProp, useNavigation, NavigationProp } from '@react-navigation/native';
 import { supabase } from '../supabase/supabaseClient';
 import HoleModal from '../components/HoleModal';
 import { fetchCoursePar } from '../utils/scoresUtils';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
 type Score = {
   hole: number;
@@ -28,15 +29,75 @@ type ProfileStackParamList = {
 };
 
 const PlayRoundScreen: React.FC = () => {
+  const navigation = useNavigation<NavigationProp<ProfileStackParamList>>();
   const route = useRoute<RouteProp<ProfileStackParamList, 'PlayRound'>>();
   const { RoundID } = route.params;
 
+  const [userId, setUserId] = useState<string | null>(null);
   const [playerScores, setPlayerScores] = useState<PlayerScores[]>([]);
   const [holes, setHoles] = useState<number[]>([]);
   const [parValues, setParValues] = useState<(number | string)[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [modalVisible, setModalVisible] = useState<boolean>(false);
   const [selectedHole, setSelectedHole] = useState<{ hole: number; player_id: string } | null>(null);
+  const [optionsModalVisible, setOptionsModalVisible] = useState<boolean>(false);
+
+  useEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <TouchableOpacity onPress={() => setOptionsModalVisible(true)} style={styles.headerButton}>
+          <Ionicons name="ellipsis-vertical" size={24} color="#000" />
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation]);
+
+  useEffect(() => {
+    const fetchUserId = async () => {
+      const { data, error } = await supabase.auth.getUser();
+      if (error) {
+        console.error('Error fetching user ID:', error);
+      } else {
+        setUserId(data.user?.id || null);
+      }
+    };
+    fetchUserId();
+  }, []);
+
+  const confirmDeleteRound = async () => {
+    setOptionsModalVisible(false);
+
+    Alert.alert(
+      "Delete Round?",
+      "Are you sure you want to delete this round? This action cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Delete", 
+          style: "destructive", 
+          onPress: async () => {
+            try {
+              if (!userId) {
+                Alert.alert("Error", "User not authenticated.");
+                return;
+              }
+              const { error } = await supabase.from('scores').delete().eq('round_id', RoundID).eq('player', userId);
+              if (error) throw error;
+              Alert.alert("Round Deleted", "The round has been successfully deleted.");
+              const { data, error: scoresError } = await supabase.from('scores').select('*').eq('round_id', RoundID);
+              if ( data && data.length === 0 ) {
+                const { error } = await supabase.from('rounds').delete().eq('id', RoundID);
+                if (error) throw error;
+              }
+              navigation.goBack();
+            } catch (err) {
+              Alert.alert("Error", "Failed to delete round. Please try again.");
+            }
+          }
+        }
+      ]
+    );
+  };
 
   useEffect(() => {
     const fetchScores = async () => {
@@ -148,6 +209,22 @@ const PlayRoundScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
+    {/* Options Modal */}
+    <Modal 
+      visible={optionsModalVisible} 
+      transparent 
+      animationType="fade"
+      onRequestClose={() => setOptionsModalVisible(false)}
+    >
+      <Pressable style={styles.modalOverlay} onPress={() => setOptionsModalVisible(false)}>
+        <View style={styles.optionsModal}>
+          <TouchableOpacity style={styles.optionButton} onPress={confirmDeleteRound}>
+            <Text style={styles.optionText}>Delete Round</Text>
+          </TouchableOpacity>
+        </View>
+      </Pressable>
+    </Modal>
+
       <View>
         <View style={[styles.headerRow, styles.topHeaderRowLeft]}>
           <Text style={styles.playerName}>Holes</Text>
@@ -236,6 +313,27 @@ const styles = StyleSheet.create({
   scoreText: { fontSize: 16, fontWeight: '600' },
   alternateRow: { backgroundColor: '#F1FFF5' },
   lastRow: { borderBottomLeftRadius: 8, borderBottomRightRadius: 8 },
+  headerButton: { paddingRight: 10, paddingVertical: 10 },
+  modalOverlay: { 
+    flex: 1, 
+    backgroundColor: 'rgba(0, 0, 0, 0.3)', 
+    justifyContent: 'flex-start', 
+    alignItems: 'flex-end' 
+  },
+  optionsModal: { 
+    backgroundColor: '#fff', 
+    padding: 10, 
+    borderRadius: 8, 
+    marginTop: 60, 
+    marginRight: 15, 
+    shadowColor: '#000', 
+    shadowOffset: { width: 0, height: 2 }, 
+    shadowOpacity: 0.3, 
+    shadowRadius: 5, 
+    elevation: 5 
+  },
+  optionButton: { paddingVertical: 10, paddingHorizontal: 15 },
+  optionText: { fontSize: 16, color: 'red' },
 });
 
 export default PlayRoundScreen;

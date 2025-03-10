@@ -6,7 +6,7 @@ type HoleModalProps = {
   visible: boolean;
   holeNumber: number | null;
   onClose: () => void;
-  onSave: (holeNumber: number, newScore: number) => void; // Add onSave prop
+  onSave: (holeNumber: number, newScore: number) => void;
 };
 
 const HoleModal: React.FC<HoleModalProps> = ({ visible, holeNumber, onClose, onSave }) => {

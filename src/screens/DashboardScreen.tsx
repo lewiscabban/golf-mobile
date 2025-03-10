@@ -3,58 +3,13 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, ActivityIndi
 import { supabase } from '../supabase/supabaseClient';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { ScoresRow, ProfilesRow } from '../types/supabase';
+import { Courses } from "../utils/scoresUtils"
 import Ionicons from 'react-native-vector-icons/Ionicons'; // Import Ionicons for the friends icon
 
 type Round = {
   course_id: string
   created_at: string
   id: number
-}
-
-type Courses = {
-  ClubID: string
-  ClubName: string
-  CourseID: string
-  CourseName: string
-  MeasureMeters: number
-  NumHoles: number
-  Par1: number | null
-  Par10: number | null
-  Par11: number | null
-  Par12: number | null
-  Par13: number | null
-  Par14: number | null
-  Par15: number | null
-  Par16: number | null
-  Par17: number | null
-  Par18: number | null
-  Par2: number | null
-  Par3: number | null
-  Par4: number | null
-  Par5: number | null
-  Par6: number | null
-  Par7: number | null
-  Par8: number | null
-  Par9: number | null
-  ParW1: number | null
-  ParW10: number | null
-  ParW11: number | null
-  ParW12: number | null
-  ParW13: number | null
-  ParW14: number | null
-  ParW15: number | null
-  ParW16: number | null
-  ParW17: number | null
-  ParW18: number | null
-  ParW2: number | null
-  ParW3: number | null
-  ParW4: number | null
-  ParW5: number | null
-  ParW6: number | null
-  ParW7: number | null
-  ParW8: number | null
-  ParW9: number | null
-  TimestampUpdated: number | null
 }
 
 type DashboardStackParamList = {
@@ -328,21 +283,6 @@ const DashboardScreen = () => {
   
         <Ionicons name="chevron-forward" size={24} color="#000" style={styles.arrowIcon} />
       </TouchableOpacity>
-    );
-  };
-  
-
-  const renderPlayersRound = ({ item, player }: { item: Round, player: ProfilesRow}) => {
-    const totalScore = calculateTotalScore(scoresMap[item.id], player) || 0;
-    const holesPlayed = calculateHolesPlayed(scoresMap[item.id], player) || 0;
-    const totalPar = parMap[item.id] || 0;
-
-    return (
-      <View>
-        <Text style={styles.roundText}>Players: {player.username}</Text>
-        <Text style={styles.roundText}>Golf Score: {totalScore}</Text>
-        <Text style={styles.roundText}>Holes Played: {holesPlayed}/18</Text>
-      </View>
     );
   };
 

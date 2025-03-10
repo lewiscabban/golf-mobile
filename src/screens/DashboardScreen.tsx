@@ -316,6 +316,7 @@ const DashboardScreen = () => {
           contentContainerStyle={styles.list}
           onRefresh={handleRefresh}
           refreshing={refreshing}
+          showsVerticalScrollIndicator={false}
         />
       )}
     </View>

@@ -32,6 +32,7 @@ const ProfileStackScreen = () => {
       screenOptions={{
         headerBackButtonDisplayMode: 'minimal',
         headerShadowVisible: false,
+        contentStyle:{ backgroundColor: '#fff'}
       }}
     >
       <ProfileStack.Screen name="Profile" component={ProfileScreen} />
@@ -48,6 +49,7 @@ const DasthoardStackScreen = () => {
         screenOptions={{
           headerBackButtonDisplayMode: 'minimal',
           headerShadowVisible: false,
+          contentStyle:{ backgroundColor: '#fff'}
         }}
       >
         <DashboardStack.Screen name="Dashboard" component={DashboardScreen} />
@@ -55,6 +57,7 @@ const DasthoardStackScreen = () => {
         <DashboardStack.Screen
           name="PlayRound"
           component={PlayRoundScreen}
+          
         />
       </DashboardStack.Navigator>
     );
@@ -66,6 +69,7 @@ const SettingsStackScreen = () => {
         screenOptions={{
           headerBackButtonDisplayMode: 'minimal',
           headerShadowVisible: false,
+          contentStyle:{ backgroundColor: '#fff'}
         }}
       >
         <SettingsStack.Screen name="Settings" component={SettingsScreen} />

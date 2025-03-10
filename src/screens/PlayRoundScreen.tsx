@@ -171,7 +171,11 @@ const PlayRoundScreen: React.FC = () => {
           </View>
         ))}
       </View>
-      <ScrollView horizontal>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        bounces={false}
+      >
         <View>
           <View style={[styles.headerRow, styles.topHeaderRowRight]}>
             {holes.map((hole) => (

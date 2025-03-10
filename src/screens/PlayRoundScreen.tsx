@@ -128,20 +128,34 @@ const PlayRoundScreen: React.FC = () => {
     }
   };
 
+  const calculateTotalScore = (player: string): number => {
+    let totalScore = 0
+    playerScores.filter((score) => score.player_name === player).map((player) => (
+        holes.map((hole) => (
+          totalScore += player.scores[hole] || 0
+        ))
+    ))
+    return totalScore
+  };
+
+  const calculateTotalPar = (): number => {
+    let totalPar = 0
+    parValues.map((player) => (
+      totalPar += Number(player) || 0
+    ))
+    return totalPar
+  };
+
   return (
-    <ScrollView horizontal style={styles.container}>
+    <View style={styles.container}>
       <View>
-        <View style={[styles.headerRow, styles.topHeaderRow]}>
+        <View style={[styles.headerRow, styles.topHeaderRowLeft]}>
           <Text style={styles.playerName}>Holes</Text>
-          {holes.map((hole) => (
-            <Text key={hole} style={styles.headerCell}>{hole}</Text>
-          ))}
+          <Text style={styles.playerScore}>Score</Text>
         </View>
         <View style={styles.headerRow}>
           <Text style={styles.playerName}>Par</Text>
-          {parValues.map((par, index) => (
-            <Text key={index} style={styles.headerCell}>{par}</Text>
-          ))}
+          <Text style={styles.playerScore}>{calculateTotalPar()}</Text>
         </View>
         {playerScores.map((player, index) => (
           <View
@@ -152,40 +166,69 @@ const PlayRoundScreen: React.FC = () => {
               index === playerScores.length - 1 ? styles.lastRow : null
             ]}
           >
-            <Text style={styles.playerName}>{player.player_name}</Text>
-            {holes.map((hole) => (
-              <TouchableOpacity
-                key={hole}
-                style={styles.scoreCell}
-                onPress={() => handleOpenModal(hole, player.player_id)}
-              >
-                <Text style={styles.scoreText}>{player.scores[hole] ?? '-'}</Text>
-              </TouchableOpacity>
-            ))}
+            <Text style={[styles.playerName, styles.playerHeigth]}>{player.player_name}</Text>
+            <Text style={[styles.playerScore, styles.playerHeigth]}>{calculateTotalScore(player.player_name)}</Text>
           </View>
         ))}
-
       </View>
-      {selectedHole && (
-        <HoleModal
-          visible={modalVisible}
-          holeNumber={selectedHole.hole}
-          onClose={handleCloseModal}
-          onSave={(holeNumber, newScore) => handleSaveScore(holeNumber, selectedHole.player_id, newScore)}
-        />
-      )}
-    </ScrollView>
+      <ScrollView horizontal>
+        <View>
+          <View style={[styles.headerRow, styles.topHeaderRowRight]}>
+            {holes.map((hole) => (
+              <Text key={hole} style={styles.headerCell}>{hole}</Text>
+            ))}
+          </View>
+          <View style={styles.headerRow}>
+            {parValues.map((par, index) => (
+              <Text key={index} style={styles.headerCell}>{par}</Text>
+            ))}
+          </View>
+          {playerScores.map((player, index) => (
+            <View
+              key={player.player_id}
+              style={[
+                styles.playerRow,
+                index % 2 === 1 ? styles.alternateRow : null, // Apply alternate color to every second row
+                index === playerScores.length - 1 ? styles.lastRow : null
+              ]}
+            >
+              {holes.map((hole) => (
+                <TouchableOpacity
+                  key={hole}
+                  style={styles.scoreCell}
+                  onPress={() => handleOpenModal(hole, player.player_id)}
+                >
+                  <Text style={[styles.scoreText, styles.playerHeigth]}>{player.scores[hole] ?? '-'}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          ))}
+
+        </View>
+        {selectedHole && (
+          <HoleModal
+            visible={modalVisible}
+            holeNumber={selectedHole.hole}
+            onClose={handleCloseModal}
+            onSave={(holeNumber, newScore) => handleSaveScore(holeNumber, selectedHole.player_id, newScore)}
+          />
+        )}
+      </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { padding: 16, backgroundColor: '#fff', borderRadius: 8 },
+  container: { padding: 16, backgroundColor: '#fff', flexDirection: 'row' },
   headerRow: { flexDirection: 'row', backgroundColor: '#c8f7c5', padding: 10},
-  topHeaderRow: { borderTopLeftRadius: 8, borderTopRightRadius: 8 },
+  topHeaderRowLeft: { borderTopLeftRadius: 8 },
+  topHeaderRowRight: { borderTopRightRadius: 8 },
   headerCell: { width: 50, textAlign: 'center', fontWeight: 'bold' },
   playerRow: { flexDirection: 'row', alignItems: 'center', padding: 10 },
   playerName: { width: 80, fontWeight: 'bold' },
-  scoreCell: { width: 50, justifyContent: 'center', alignItems: 'center', padding: 5 },
+  playerScore: { width: 40, fontWeight: 'bold', textAlign: 'center', },
+  playerHeigth: { height: 25 },
+  scoreCell: { width: 50, justifyContent: 'center', alignItems: 'center' },
   scoreText: { fontSize: 16, fontWeight: '600' },
   alternateRow: { backgroundColor: '#F1FFF5' },
   lastRow: { borderBottomLeftRadius: 8, borderBottomRightRadius: 8 },

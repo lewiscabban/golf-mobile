@@ -166,22 +166,30 @@ const PlayRoundScreen: React.FC = () => {
 
   const handleSaveScore = async (hole: number, player_id: string, newScore: number) => {
     try {
-      const { error } = await supabase
-        .from('scores')
-        .update({ score: newScore })
-        .eq('round_id', RoundID)
-        .eq('hole', hole)
-        .eq('player', player_id);
+      let userCanEdit = false
+      for (let i = 0; i < playerScores.length; i++) {
+        if (playerScores[i].player_id === userId) {userCanEdit = true}
+      }
+      if (!userCanEdit) {
+        Alert.alert('Error', `Only players can edit scores in this game.`)
+      } else {
+        const { data, error } = await supabase
+          .from('scores')
+          .update({ score: newScore })
+          .eq('round_id', RoundID)
+          .eq('hole', hole)
+          .eq('player', player_id);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      setPlayerScores((prevScores) =>
-        prevScores.map((player) =>
-          player.player_id === player_id
-            ? { ...player, scores: { ...player.scores, [hole]: newScore } }
-            : player
-        )
-      );
+        setPlayerScores((prevScores) =>
+          prevScores.map((player) =>
+            player.player_id === player_id
+              ? { ...player, scores: { ...player.scores, [hole]: newScore } }
+              : player
+          )
+        );
+      }
 
       handleCloseModal();
     } catch (err) {

@@ -54,7 +54,7 @@ const ProfileScreen = () => {
     >
       <View style={styles.itemRow}>
         <Text style={styles.itemText}>{item.ClubName}</Text>
-        <Icon name="chevron-right" size={24} color="#666" />
+        <Icon name="chevron-right" size={24} color="#4CAF50" />
       </View>
     </TouchableOpacity>
   );
@@ -87,7 +87,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
-    backgroundColor: '#f9fafb', // Light background color
+    backgroundColor: '#fff', // Light background color
   },
   title: {
     fontSize: 24,
@@ -98,13 +98,13 @@ const styles = StyleSheet.create({
   searchInput: {
     height: 50, // Adjust height to match FlatList item height
     borderBottomWidth: 1,
-    borderColor: '#211071', // Set border color to #211071
+    borderColor: '#4CAF50', // Set border color to #4CAF50
     // borderRadius: 8,
     paddingHorizontal: 10,
     marginBottom: 10,
     width: '100%', // Ensures the input takes up the full width
     // backgroundColor: '#fff', // Set background to white
-    color: '#211071', // Lighter text color
+    color: '#4CAF50', // Lighter text color
   },
   list: {
     paddingBottom: 16,
@@ -132,7 +132,7 @@ const styles = StyleSheet.create({
   itemText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#3b3b98', // A deep blue/purple color for contrast
+    color: '#4CAF50', // A deep blue/purple color for contrast
   },
 });
 

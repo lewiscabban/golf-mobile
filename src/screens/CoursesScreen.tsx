@@ -94,7 +94,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
-    backgroundColor: '#f9fafb', // Light background color
+    backgroundColor: '#FFFFFF', // Light background color
   },
   title: {
     fontSize: 24,
@@ -106,14 +106,14 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   item: {
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFFFF',
     padding: 16,
     marginVertical: 8,
     borderRadius: 12,
     flexDirection: 'row', 
     justifyContent: 'space-between',
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -128,7 +128,7 @@ const styles = StyleSheet.create({
   courseName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#3b3b98', // A deep blue/purple color for contrast
+    color: '#4CAF50', // A deep blue/purple color for contrast
   },
   rightSection: {
     flexDirection: 'row',

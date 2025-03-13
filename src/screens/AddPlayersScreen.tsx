@@ -19,6 +19,11 @@ type DashboardTabParamList = {
   Dashboard: { screen: string; params: { RoundID: number } };
 };
 
+type Players = {
+  id: number;
+  username: string
+};
+
 type NavigationProps = CompositeNavigationProp<
   StackNavigationProp<ProfileStackParamList>,
   BottomTabNavigationProp<DashboardTabParamList>
@@ -28,18 +33,31 @@ const AddPlayersScreen = () => {
   const navigation = useNavigation<NavigationProps>();
   const route = useRoute();
   const { ClubID, CourseID } = route.params as { ClubID: number; CourseID: number };
-
+  const [userId, setUserId] = useState<string | null>(null);
   const [friends, setFriends] = useState<any[]>([]);
   const [playerName, setPlayerName] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [selectedPlayers, setSelectedPlayers] = useState<any[]>([]);
+  const [selectedPlayers, setSelectedPlayers] = useState<Players[]>([]);
   const [loading, setLoading] = useState(false);
   const [isDropdownVisible, setDropdownVisible] = useState(false);
 
   useEffect(() => {
+    const fetchUserId = async () => {
+      const { data, error } = await supabase.auth.getUser();
+      if (error) {
+        console.error('Error fetching user ID:', error);
+      } else {
+        setUserId(data.user?.id || null);
+      }
+    };
+
+    fetchUserId();
+  }, []);
+
+  useEffect(() => {
     fetchFriends();
     getCurrentUser();
-  }, []);
+  }, [userId]);
 
   const fetchFriends = async () => {
     const { data: userData, error: userError } = await supabase.auth.getUser();
@@ -172,7 +190,7 @@ const AddPlayersScreen = () => {
                 <TouchableOpacity onPress={() => addPlayer(item)} style={styles.addPlayerButton}>
                   <View style={styles.addPlayerContent}>
                     <Text style={styles.dropdownItem}>{item.username}</Text>
-                    <Icon name="add" size={24} color="#211071" />
+                    <Icon name="add" size={24} color="#4CAF50" />
                   </View>
                 </TouchableOpacity>
               </View>
@@ -188,9 +206,12 @@ const AddPlayersScreen = () => {
           renderItem={({ item }) => (
             <View style={styles.playerItemContainer}>
               <Text style={styles.playerItem}>{item.username}</Text>
-              <TouchableOpacity onPress={() => removePlayer(item.id)}>
-                <Icon name="delete" size={24} color="#666" />
-              </TouchableOpacity>
+
+              {String(item.id) !== userId && (
+                <TouchableOpacity onPress={() => removePlayer(item.id)}>
+                  <Icon name="delete" size={24} color="#666" />
+                </TouchableOpacity>
+              )}
             </View>
           )}
         />
@@ -206,7 +227,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#FFFFFF',
   },
   title: {
     fontSize: 24,
@@ -217,11 +238,11 @@ const styles = StyleSheet.create({
   input: {
     height: 50,
     borderBottomWidth: 1,
-    borderColor: '#211071',
+    borderColor: '#4CAF50',
     paddingHorizontal: 10,
     marginBottom: 10,
     width: '100%',
-    color: '#211071',
+    color: '#000000',
   },
   inputWrapper: {
     position: 'relative'
@@ -244,7 +265,7 @@ const styles = StyleSheet.create({
   },
   dropdownItem: {
     padding: 16,
-    color: '#211071',
+    color: '#000000',
   },
   playerItemContainer: {
     flexDirection: 'row',
@@ -252,6 +273,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#fff',
     marginVertical: 4,
+    height: 50,
   },
   addPlayerItemContainer: {
     width: '100%',
@@ -270,7 +292,7 @@ const styles = StyleSheet.create({
   playerItem: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#3b3b98',
+    color: '#4CAF50',
   },
   addPlayerButton: {
     width: '100%',
@@ -288,7 +310,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   button: {
-    backgroundColor: '#3b3b98',
+    backgroundColor: '#4CAF50',
     padding: 12,
     borderRadius: 8,
     alignItems: 'center',

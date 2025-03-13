@@ -96,6 +96,8 @@ const AppTabs = () => {
         },
         tabBarShowLabel: true,
         tabBarStyle: {borderTopWidth: 0},
+        tabBarActiveTintColor: '#4CAF50',
+        tabBarInactiveTintColor: '#888',
       })}
     >
       <Tab.Screen

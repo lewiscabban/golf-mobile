@@ -138,7 +138,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   searchButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#4CAF50',
     padding: 10,
     borderRadius: 5,
     alignItems: 'center',
@@ -157,15 +157,15 @@ const styles = StyleSheet.create({
     fontSize: 18,
   },
   addButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#4CAF50',
     padding: 10,
     borderRadius: 5,
     alignItems: 'center',
     justifyContent: 'center',
   },
   closeText: {
-    color: '#007AFF',
-    marginTop: 20,
+    color: '#4CAF50',
+    marginVertical: 20,
     fontSize: 18,
   },
 });

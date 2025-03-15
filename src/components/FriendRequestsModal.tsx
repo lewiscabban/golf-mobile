@@ -2,14 +2,16 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import Modal from 'react-native-modal';
 import { supabase } from '../supabase/supabaseClient';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
 type FriendRequestsModalProps = {
   visible: boolean;
   onClose: () => void;
+  handleDeletePress: (friendshipId: number) => void
   friendRequests: { id: string; sender_id: string }[];
 };
 
-const FriendRequestsModal: React.FC<FriendRequestsModalProps> = ({ visible, onClose, friendRequests }) => {
+const FriendRequestsModal: React.FC<FriendRequestsModalProps> = ({ visible, onClose, handleDeletePress, friendRequests }) => {
   const [friendRequestsWithUsernames, setFriendRequestsWithUsernames] = useState<
     { id: string; sender_id: string; username: string }[]
   >([]);
@@ -65,6 +67,13 @@ const FriendRequestsModal: React.FC<FriendRequestsModalProps> = ({ visible, onCl
     Alert.alert('Success', 'Friend request accepted!');
   };
 
+  const handleDeleteRequest = async (friendshipId: string) => {
+    handleDeletePress(Number(friendshipId))
+    setFriendRequestsWithUsernames((prevRequests) =>
+      prevRequests.filter((request) => request.id !== friendshipId)
+    );
+  };
+
   return (
     <Modal
       isVisible={visible}
@@ -87,7 +96,11 @@ const FriendRequestsModal: React.FC<FriendRequestsModalProps> = ({ visible, onCl
                 style={styles.acceptButton}
                 onPress={() => handleAcceptRequest(item.id)}
               >
-                <Text style={styles.acceptButtonText}>Accept</Text>
+                {/* <Text style={styles.acceptButtonText}>Accept</Text> */}
+                <Ionicons name="checkmark" size={24} color="white" />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.deleteButton} onPress={() => handleDeleteRequest(item.id)}>
+                <Ionicons name="trash" size={24} color="white" />
               </TouchableOpacity>
             </View>
           )}
@@ -130,19 +143,27 @@ const styles = StyleSheet.create({
     fontSize: 18,
   },
   acceptButton: {
-    backgroundColor: '#007AFF',
-    paddingVertical: 5,
-    paddingHorizontal: 10,
+    backgroundColor: '#4CAF50',
+    padding: 5,
     borderRadius: 5,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   acceptButtonText: {
     color: '#FFF',
     fontSize: 16,
   },
   closeText: {
-    color: '#007AFF',
+    color: '#4CAF50',
     marginTop: 20,
     fontSize: 18,
+  },
+  deleteButton: {
+    backgroundColor: "red",
+    padding: 5,
+    borderRadius: 5,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 

@@ -9,6 +9,7 @@ export type CoordinateRow = Database['public']['Tables']['coordinates']['Row'];
 export type RoundsRow = Database['public']['Tables']['rounds']['Row'];
 export type ScoresRow = Database['public']['Tables']['scores']['Row'];
 export type ProfilesRow = Database['public']['Tables']['profiles']['Row'];
+export type FriendshipsRow = Database['public']['Tables']['friendships']['Row'];
 
 // Refer to Insert and Update types
 type CourseInsert = Database['public']['Tables']['courses']['Insert'];

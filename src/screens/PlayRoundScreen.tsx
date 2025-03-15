@@ -5,6 +5,7 @@ import { supabase } from '../supabase/supabaseClient';
 import HoleModal from '../components/HoleModal';
 import { fetchCoursePar } from '../utils/scoresUtils';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import ProfileModal from '../components/ProfileModal';
 
 type Score = {
   hole: number;
@@ -32,14 +33,15 @@ const PlayRoundScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp<ProfileStackParamList>>();
   const route = useRoute<RouteProp<ProfileStackParamList, 'PlayRound'>>();
   const { RoundID } = route.params;
-
   const [userId, setUserId] = useState<string | null>(null);
   const [playerScores, setPlayerScores] = useState<PlayerScores[]>([]);
   const [holes, setHoles] = useState<number[]>([]);
   const [parValues, setParValues] = useState<(number | string)[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [modalVisible, setModalVisible] = useState<boolean>(false);
+  const [holeModalVisible, setHoleModalVisible] = useState<boolean>(false);
+  const [profileModalVisible, setProfileModalVisible] = useState<boolean>(false);
   const [selectedHole, setSelectedHole] = useState<{ hole: number; player_id: string } | null>(null);
+  const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
   const [optionsModalVisible, setOptionsModalVisible] = useState<boolean>(false);
 
   useEffect(() => {
@@ -154,14 +156,24 @@ const PlayRoundScreen: React.FC = () => {
     fetchScores();
   }, [RoundID]);
 
-  const handleOpenModal = (hole: number, player_id: string) => {
+  const handleOpenHoleModal = (hole: number, player_id: string) => {
     setSelectedHole({ hole, player_id });
-    setModalVisible(true);
+    setHoleModalVisible(true);
   };
 
-  const handleCloseModal = () => {
+  const handleCloseHoleModal = () => {
     setSelectedHole(null);
-    setModalVisible(false);
+    setHoleModalVisible(false);
+  };
+
+  const handleOpenProfileModal = (player_id: string) => {
+    setSelectedPlayer(player_id);
+    setProfileModalVisible(true);
+  };
+
+  const handleCloseProfileModal = () => {
+    setSelectedPlayer(null);
+    setProfileModalVisible(false);
   };
 
   const handleSaveScore = async (hole: number, player_id: string, newScore: number) => {
@@ -191,7 +203,7 @@ const PlayRoundScreen: React.FC = () => {
         );
       }
 
-      handleCloseModal();
+      handleCloseHoleModal();
     } catch (err) {
       Alert.alert('Error', `Could not save score. Please try again.`);
     }
@@ -251,7 +263,13 @@ const PlayRoundScreen: React.FC = () => {
               index === playerScores.length - 1 ? styles.lastRow : null
             ]}
           >
-            <Text style={[styles.playerName, styles.playerHeigth]}>{player.player_name}</Text>
+            <TouchableOpacity
+              key={player.player_id}
+              // style={styles.scoreCell}
+              onPress={() => handleOpenProfileModal(player.player_id)}
+            >
+              <Text style={[styles.playerName, styles.playerHeigth]}>{player.player_name}</Text>
+            </TouchableOpacity>
             <Text style={[styles.playerScore, styles.playerHeigth]}>{calculateTotalScore(player.player_name)}</Text>
           </View>
         ))}
@@ -285,7 +303,7 @@ const PlayRoundScreen: React.FC = () => {
                 <TouchableOpacity
                   key={hole}
                   style={styles.scoreCell}
-                  onPress={() => handleOpenModal(hole, player.player_id)}
+                  onPress={() => handleOpenHoleModal(hole, player.player_id)}
                 >
                   <Text style={[styles.scoreText, styles.playerHeigth]}>{player.scores[hole] ?? '-'}</Text>
                 </TouchableOpacity>
@@ -296,10 +314,18 @@ const PlayRoundScreen: React.FC = () => {
         </View>
         {selectedHole && (
           <HoleModal
-            visible={modalVisible}
+            visible={holeModalVisible}
             holeNumber={selectedHole.hole}
-            onClose={handleCloseModal}
+            onClose={handleCloseHoleModal}
             onSave={(holeNumber, newScore) => handleSaveScore(holeNumber, selectedHole.player_id, newScore)}
+          />
+        )}
+
+        {selectedPlayer && (
+          <ProfileModal
+            visible={profileModalVisible}
+            playerId={selectedPlayer}
+            onClose={handleCloseProfileModal}
           />
         )}
       </ScrollView>

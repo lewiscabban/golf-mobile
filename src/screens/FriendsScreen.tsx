@@ -114,7 +114,6 @@ const FriendsScreen = () => {
       console.error("Error sending friend request:", error);
       Alert.alert("Error", "Failed to send friend request.");
     } else {
-      Alert.alert("Success", "Friend request sent!");
       setAddFriendModalVisible(false);
     }
   };
@@ -159,7 +158,6 @@ const FriendsScreen = () => {
         console.error("Error deleting friendship:", error);
         Alert.alert("Error", "Failed to delete friendship.");
       } else {
-        Alert.alert("Success", "Friendship deleted.");
         fetchFriends(); // Refresh the friends list
       }
     } catch (err) {
@@ -237,6 +235,7 @@ const FriendsScreen = () => {
           setFriendRequestsModalVisible(false);
           fetchFriends();
         }}
+        handleDeletePress={handleDeletePress}
         friendRequests={friendRequests}
       />
     </View>
@@ -252,7 +251,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   button: {
-    backgroundColor: "#007AFF",
+    backgroundColor: "#4CAF50",
     padding: 16,
     marginVertical: 8,
     borderRadius: 8,

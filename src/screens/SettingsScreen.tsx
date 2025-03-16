@@ -11,25 +11,29 @@ import {
   Modal,
 } from 'react-native';
 import { supabase } from '../supabase/supabaseClient';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
-const SettingsScreen = () => {
-  const [profile, setProfile] = useState<{
+interface Profile {
+  first_name: string;
+  full_name: string | null;
+  id: string;
+  last_name: string;
+  updated_at: string | null;
+  username: string;
+}
+
+const SettingsScreen: React.FC = () => {
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [editing, setEditing] = useState<boolean>(false);
+  const [deleteModalVisible, setDeleteModalVisible] = useState<boolean>(false);
+  const [confirmUsername, setConfirmUsername] = useState<string>('');
+  const [updatedProfile, setUpdatedProfile] = useState<{
     first_name: string;
-    full_name: string | null;
-    id: string;
     last_name: string;
-    updated_at: string | null;
     username: string;
-  } | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState(false);
-  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
-  const [confirmUsername, setConfirmUsername] = useState('');
-  const [updatedProfile, setUpdatedProfile] = useState({
-    first_name: '',
-    last_name: '',
-    username: '',
-  });
+  }>({ first_name: '', last_name: '', username: '' });
+
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -179,31 +183,28 @@ const SettingsScreen = () => {
 
       <View style={styles.profileSection}>
         <Text style={styles.sectionTitle}>Profile Information</Text>
-
+        <TouchableOpacity style={styles.editButton} onPress={handleEditToggle}>
+          <Ionicons name="create-outline" size={24} color="#4CAF50" />
+        </TouchableOpacity>
         <View style={styles.fieldContainer}>
           <Text style={styles.label}>First Name:</Text>
           {editing ? (
             <TextInput
               style={styles.input}
               value={updatedProfile.first_name}
-              onChangeText={(text) =>
-                setUpdatedProfile((prev) => ({ ...prev, first_name: text }))
-              }
+              onChangeText={(text) => setUpdatedProfile((prev) => ({ ...prev, first_name: text }))}
             />
           ) : (
-            <Text style={styles.value}>{profile.first_name}</Text>
+            <Text style={styles.value}>{profile?.first_name}</Text>
           )}
         </View>
-
         <View style={styles.fieldContainer}>
           <Text style={styles.label}>Last Name:</Text>
           {editing ? (
             <TextInput
               style={styles.input}
               value={updatedProfile.last_name}
-              onChangeText={(text) =>
-                setUpdatedProfile((prev) => ({ ...prev, last_name: text }))
-              }
+              onChangeText={(text) => setUpdatedProfile((prev) => ({ ...prev, last_name: text }))}
             />
           ) : (
             <Text style={styles.value}>{profile.last_name}</Text>
@@ -216,16 +217,14 @@ const SettingsScreen = () => {
             <TextInput
               style={styles.input}
               value={updatedProfile.username}
-              onChangeText={(text) =>
-                setUpdatedProfile((prev) => ({ ...prev, username: text }))
-              }
+              onChangeText={(text) => setUpdatedProfile((prev) => ({ ...prev, username: text }))}
             />
           ) : (
             <Text style={styles.value}>{profile.username}</Text>
           )}
         </View>
 
-        {editing ? (
+        {editing && (
           <View style={styles.editButtons}>
             <TouchableOpacity style={styles.confirmButton} onPress={handleUpdateProfile}>
               <Text style={styles.buttonText}>Confirm</Text>
@@ -234,12 +233,15 @@ const SettingsScreen = () => {
               <Text style={styles.buttonText}>Cancel</Text>
             </TouchableOpacity>
           </View>
-        ) : (
-          <TouchableOpacity style={styles.editButton} onPress={handleEditToggle}>
-            <Text style={styles.buttonText}>Edit</Text>
-          </TouchableOpacity>
         )}
       </View>
+
+      <TouchableOpacity
+        style={styles.logoutButton}
+        onPress={handleLogout}
+      >
+        <Text style={styles.buttonText}>Logout</Text>
+      </TouchableOpacity>
 
       <TouchableOpacity
         style={styles.deleteButton}
@@ -247,8 +249,6 @@ const SettingsScreen = () => {
       >
         <Text style={styles.buttonText}>Delete Profile</Text>
       </TouchableOpacity>
-
-      <Button title="Logout" onPress={handleLogout} />
 
       {/* Delete Confirmation Modal */}
       <Modal visible={deleteModalVisible} transparent={true} animationType="slide">
@@ -293,32 +293,37 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 16,
-    textAlign: 'center',
   },
   profileSection: {
-    marginBottom: 32,
+    backgroundColor: '#FFF',
+    padding: 16,
+    borderRadius: 8,
+    marginBottom: 20,
+    elevation: 1,
+    position: 'relative',
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   fieldContainer: {
-    marginBottom: 16,
+    marginBottom: 12,
   },
   label: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 4,
+    fontSize: 14,
+    color: '#6C757D',
   },
   value: {
     fontSize: 16,
+    fontWeight: 'bold',
+    color: '#212529',
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: '#CED4DA',
     borderRadius: 8,
-    padding: 8,
+    padding: 10,
     fontSize: 16,
   },
   editButtons: {
@@ -326,11 +331,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   editButton: {
-    backgroundColor: '#007AFF',
-    padding: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 16,
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    padding: 8,
   },
   confirmButton: {
     backgroundColor: '#4CAF50',
@@ -377,6 +381,13 @@ const styles = StyleSheet.create({
   },
   deleteButton: {
     backgroundColor: '#F44336',
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginVertical: 16,
+  },
+  logoutButton: {
+    backgroundColor: '#4CAF50',
     padding: 16,
     borderRadius: 8,
     alignItems: 'center',

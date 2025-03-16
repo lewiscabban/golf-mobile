@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, ActivityIndicator, Button } from 'react-native';
 import { supabase } from '../supabase/supabaseClient';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { ScoresRow, ProfilesRow } from '../types/supabase';
@@ -18,6 +18,8 @@ type DashboardStackParamList = {
   PlayRound: { RoundID: number }; // Define the FriendRequests screen
 };
 
+const INITIAL_ITEMS = 20;
+
 const DashboardScreen = () => {
   const navigation = useNavigation<NavigationProp<DashboardStackParamList>>();
   const [userId, setUserId] = useState<string | null>(null);
@@ -28,100 +30,94 @@ const DashboardScreen = () => {
   const [courseNames, setCourseNames] = useState<Record<string, string>>({});
   const [clubNames, setClubNames] = useState<Record<string, string>>({});
   const [courseClubMap, setCourseClubMap] = useState<Record<string, string>>({});
-  const [playersMap, setPlayersMap] = useState<Record<number, ProfilesRow[]>>({}); // For storing player names for each round
+  const [playersMap, setPlayersMap] = useState<Record<number, ProfilesRow[]>>({});
   const [loading, setLoading] = useState(true);
+  const [moreLoading, setMoreLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-
-
-    // useEffect(() => {
-    //   const fetchUserId = async () => {
-    //     // const { data: roundsData, error } = await supabase
-    //     // .from('rounds')
-    //     // .select('*, scores(*)')
-    //     // .eq('scores.player', userId)
-    //     // .or(`friendships.sender_id.eq.${userId},friendships.receiver_id.eq.${userId}`)
-    //     // .eq('friendships.status', 'accepted');
-  
-    //     // if (error) {
-    //     //     console.error('Error fetching rounds for friends:', error);
-    //     // } else {
-    //     //     console.log('Rounds for friends:', roundsData);
-    //     // }
-  
-    //     const { data: friendsData, error: friendsError } = await supabase
-    //       .from('friendships')
-    //       .select('sender_id, receiver_id')
-    //       .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
-    //       .eq('status', 'accepted');
-  
-    //     if (friendsError) {
-    //         console.error('Error fetching friends:', friendsError);
-    //         return;
-    //     }
-  
-    //     // Extract friend IDs
-    //     const friendIds = friendsData?.flatMap(friend => 
-    //         friend.sender_id === userId ? friend.receiver_id : friend.sender_id
-    //     ) || [];
-  
-    //     if (friendIds.length > 0 || userId) {
-    //     // Fetch round IDs for friends
-    //     const { data: friendRoundsData, error: friendRoundsError } = await supabase
-    //         .from('scores')
-    //         .select('round_id')
-    //         .in('player', friendIds);
-  
-    //     if (friendRoundsError) {
-    //         console.error('Error fetching rounds for friends:', friendRoundsError);
-    //         return;
-    //     }
-  
-    //     const friendRoundIds = friendRoundsData?.map(score => score.round_id) || [];
-  
-    //     // Fetch round IDs for the current user
-    //     const { data: userRoundsData, error: userRoundsError } = await supabase
-    //         .from('scores')
-    //         .select('round_id')
-    //         .eq('player', userId);
-  
-    //     if (userRoundsError) {
-    //         console.error('Error fetching rounds for user:', userRoundsError);
-    //         return;
-    //     }
-  
-    //     const userRoundIds = userRoundsData?.map(score => score.round_id) || [];
-  
-    //     // Combine both friend and user round IDs
-    //     const allRoundIds = Array.from(new Set([...friendRoundIds, ...userRoundIds]));
-  
-    //     // Now fetch the rounds based on the combined round IDs
-    //     if (allRoundIds.length > 0) {
-    //         const { data: finalRoundsData, error: finalRoundsError } = await supabase
-    //             .from('rounds')
-    //             .select('*')
-    //             .in('id', allRoundIds);
-  
-    //         if (finalRoundsError) {
-    //             console.error('Error fetching final rounds:', finalRoundsError);
-    //         } else {
-    //             console.log('Rounds for friends and user:', finalRoundsData);
-    //         }
-    //       } else {
-    //           console.log('No rounds found for friends or user.');
-    //       }
-    //     } else {
-    //         console.log('No friends found.');
-    //     }
-        
-    //   };
-    //   fetchUserId();
-    // }, [userId])
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [itemsPerPage, setItemsPerPage] = useState(INITIAL_ITEMS);
 
   const fetchRounds = async () => {
-    // TODO: split up per player
-    setLoading(true);
-    let finalRoundsData
-    let finalRoundsError
+    const { data: friendsData, error: friendsError } = await supabase
+          .from('friendships')
+          .select('sender_id, receiver_id')
+          .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
+          .eq('status', 'accepted');
+  
+        if (friendsError) {
+            console.error('Error fetching friends:', friendsError);
+            return;
+        }
+  
+        // Extract friend IDs
+        const friendIds = friendsData?.flatMap(friend => 
+            friend.sender_id === userId ? friend.receiver_id : friend.sender_id
+        ) || [];
+  
+        if (friendIds.length > 0 || userId) {
+        // Fetch round IDs for friends
+        const { data: friendRoundsData, error: friendRoundsError } = await supabase
+            .from('scores')
+            .select('round_id')
+            .in('player', friendIds);
+  
+        if (friendRoundsError) {
+            console.error('Error fetching rounds for friends:', friendRoundsError);
+            return;
+        }
+  
+        const friendRoundIds = friendRoundsData?.map(score => score.round_id) || [];
+  
+        // Fetch round IDs for the current user
+        const { data: userRoundsData, error: userRoundsError } = await supabase
+            .from('scores')
+            .select('round_id')
+            .eq('player', userId);
+  
+        if (userRoundsError) {
+            console.error('Error fetching rounds for user:', userRoundsError);
+            return;
+        }
+  
+        const userRoundIds = userRoundsData?.map(score => score.round_id) || [];
+  
+        // Combine both friend and user round IDs
+        const allRoundIds = Array.from(new Set([...friendRoundIds, ...userRoundIds]));
+  
+        // Now fetch the rounds based on the combined round IDs
+        if (allRoundIds.length > 0) {
+            const { data: finalRoundsData, error: finalRoundsError } = await supabase
+                .from('rounds')
+                .select('course_id::text, created_at, id')
+                .order("created_at", { ascending: false })
+                .in('id', allRoundIds)
+                .limit(itemsPerPage);
+  
+            if (finalRoundsError) {
+                console.error('Error fetching final rounds:', finalRoundsError);
+            } else {
+              setRounds(finalRoundsData || []);
+              await fetchAllScoresAndPars(finalRoundsData || []);
+              await fetchCourseAndClubNames(finalRoundsData || []);
+              await fetchPlayers(finalRoundsData || []);
+            }
+          } else {
+              console.log('No rounds found for friends or user.');
+          }
+        } else {
+            console.log('No friends found.');
+        }
+
+    setLoading(false);
+    setMoreLoading(false);
+    setRefreshing(false);
+  };
+
+  const fetchMoreRounds = async () => {
+    if (!hasMore) return;
+    setMoreLoading(true)
+    const nextItemsPerPage = itemsPerPage + INITIAL_ITEMS
 
     const { data: friendsData, error: friendsError } = await supabase
           .from('friendships')
@@ -174,7 +170,11 @@ const DashboardScreen = () => {
             const { data: finalRoundsData, error: finalRoundsError } = await supabase
                 .from('rounds')
                 .select('course_id::text, created_at, id')
-                .in('id', allRoundIds);
+                .order("created_at", { ascending: false })
+                .in('id', allRoundIds)
+                .limit(nextItemsPerPage);
+
+            console.log(finalRoundsData?.length)
   
             if (finalRoundsError) {
                 console.error('Error fetching final rounds:', finalRoundsError);
@@ -183,6 +183,11 @@ const DashboardScreen = () => {
               await fetchAllScoresAndPars(finalRoundsData || []);
               await fetchCourseAndClubNames(finalRoundsData || []);
               await fetchPlayers(finalRoundsData || []); // Fetch players for each round
+              setItemsPerPage(nextItemsPerPage);
+
+              if (finalRoundsData.length < nextItemsPerPage) {
+                setHasMore(false);
+              }
             }
           } else {
               console.log('No rounds found for friends or user.');
@@ -191,7 +196,7 @@ const DashboardScreen = () => {
             console.log('No friends found.');
         }
 
-    setLoading(false);
+    setMoreLoading(false);
     setRefreshing(false);
   };
 
@@ -463,15 +468,27 @@ const DashboardScreen = () => {
       {loading ? (
         <ActivityIndicator size="large" color="#0000ff" />
       ) : (
-        <FlatList
-          data={rounds}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={renderRound}
-          contentContainerStyle={styles.list}
-          onRefresh={handleRefresh}
-          refreshing={refreshing}
-          showsVerticalScrollIndicator={false}
-        />
+        <View style={{flex: 1}}>
+          <FlatList
+            data={rounds}
+            keyExtractor={(item) => item.id.toString()}
+            renderItem={renderRound}
+            contentContainerStyle={styles.list}
+            onRefresh={handleRefresh}
+            refreshing={refreshing}
+            showsVerticalScrollIndicator={false}
+            ListFooterComponent={() =>{
+              return (
+                <View>
+                  {hasMore && !moreLoading && (
+                    <Button title="Load More" onPress={fetchMoreRounds} />
+                  )}
+                  {moreLoading && <ActivityIndicator size="large" />}
+                </View>
+              )
+            }}
+          />
+        </View>
       )}
     </View>
   );

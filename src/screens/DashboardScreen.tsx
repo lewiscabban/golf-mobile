@@ -381,7 +381,9 @@ const DashboardScreen = () => {
   };
 
   useEffect(() => {
-    fetchRounds();
+    if (userId) {
+      fetchRounds();
+    }
   }, [userId]);
 
   useEffect(() => {
@@ -402,9 +404,9 @@ const DashboardScreen = () => {
   };
 
   const renderRound = ({ item }: { item: Round }) => {
-    const courseName = courseNames[item.course_id] || 'ADD LATER';
+    const courseName = courseNames[item.course_id] || 'Loading';
     const clubId = item.course_id ? courseClubMap[item.course_id] : null;
-    const clubName = clubId ? clubNames[clubId] : 'ADD LATER';
+    const clubName = clubId ? clubNames[clubId] : 'Loading';
     const createdAt = new Date(item.created_at).toLocaleDateString(); // Format date
     const players = playersMap[item.id] || []; // List of players
   
@@ -427,8 +429,13 @@ const DashboardScreen = () => {
   
         {players.map((player) => {
           const totalScore = calculateTotalScore(scoresMap[item.id], player);
-          const grossScore = `+${(totalScore - (parMap[item.id] || 0))}`;
-          const totalPar = parMap[item.id];
+          const score = (totalScore - (parMap[item.id] || 0))
+          let grossScore = score < 0 ? `${score}` : `+${score}`;
+          let totalPar = `${parMap[item.id]}`;
+          if (parMap[item.id] == 0) {
+            grossScore = "N/A";
+            totalPar = "N/A";
+          }
   
           return (
             <View key={player.id} style={styles.tableRow}>

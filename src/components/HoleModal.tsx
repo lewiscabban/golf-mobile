@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, Button, StyleSheet, TextInput } from 'react-native';
+import { View, Text, Button, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
 import Modal from 'react-native-modal';
 
 type HoleModalProps = {
@@ -10,12 +10,23 @@ type HoleModalProps = {
 };
 
 const HoleModal: React.FC<HoleModalProps> = ({ visible, holeNumber, onClose, onSave }) => {
-  const [score, setScore] = useState<string>('');
+  const [score, setScore] = useState<string | null>(null);
+  const [showCustomInput, setShowCustomInput] = useState(false);
+
+  const handleScorePress = (value: number | string) => {
+    if (value === "+") {
+      setShowCustomInput(true);
+    } else {
+      setScore(value.toString());
+      setShowCustomInput(false);
+    }
+  };
 
   const handleSave = () => {
     if (holeNumber !== null && score) {
       onSave(holeNumber, parseInt(score, 10));
-      setScore(''); // Reset score input
+      setScore(null);
+      setShowCustomInput(false);
     }
   };
 
@@ -33,16 +44,53 @@ const HoleModal: React.FC<HoleModalProps> = ({ visible, holeNumber, onClose, onS
         <Text style={styles.text}>
           {holeNumber ? `Enter Score for Hole ${holeNumber}` : 'No hole selected'}
         </Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter Score"
-          keyboardType="numeric"
-          value={score}
-          onChangeText={setScore}
-        />
+
+        {/* 3x3 Grid */}
+        {!showCustomInput && (
+          <View style={styles.grid}>
+            <View style={styles.gridRow}>
+              {[1, 2, 3].map((num) => (
+                <TouchableOpacity key={num} style={styles.gridButton} onPress={() => handleScorePress(num)}>
+                  <Text style={styles.gridButtonText}>{num}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <View style={styles.gridRow}>
+              {[4, 5, 6].map((num) => (
+                <TouchableOpacity key={num} style={styles.gridButton} onPress={() => handleScorePress(num)}>
+                  <Text style={styles.gridButtonText}>{num}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <View style={styles.gridRow}>
+              {[7, 8, "+"].map((num) => (
+                <TouchableOpacity key={num} style={styles.gridButton} onPress={() => handleScorePress(num)}>
+                  <Text style={styles.gridButtonText}>{num}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Custom Input Field */}
+        {showCustomInput && (
+          <TextInput
+            style={styles.input}
+            placeholder="Enter Custom Score"
+            keyboardType="numeric"
+            value={score ?? ""}
+            onChangeText={setScore}
+          />
+        )}
+
+        {/* Buttons */}
         <View style={styles.buttonRow}>
-          <Button title="Cancel" onPress={onClose} color="#888" />
-          <Button title="Save" onPress={handleSave} />
+          <TouchableOpacity onPress={onClose}>
+            <Text style={styles.cancelText} >Cancel</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleSave} disabled={!score}>
+            <Text style={styles.saveText} >Save</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </Modal>
@@ -68,6 +116,46 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 20,
   },
+  cancelText: {
+    fontSize: 18,
+    padding: 20,
+    fontWeight: 'bold',
+    color: '#000000',
+    flex: 1,
+    textAlign: 'center',
+  },
+  saveText: {
+    fontSize: 18,
+    padding: 20,
+    fontWeight: 'bold',
+    color: '#4CAF50',
+    flex: 1,
+    textAlign: 'center',
+  },
+  grid: {
+    flexDirection: "column",
+    flexWrap: "wrap",
+    justifyContent: "center",
+  },
+  gridRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+  },
+  gridButton: {
+    width: 60,
+    height: 60,
+    backgroundColor: "#4CAF50",
+    justifyContent: "center",
+    alignItems: "center",
+    margin: 5,
+    borderRadius: 10,
+  },
+  gridButtonText: {
+    fontSize: 24,
+    color: "#FFF",
+    fontWeight: "bold",
+  },
   input: {
     borderWidth: 1,
     borderColor: '#ccc',
@@ -76,6 +164,7 @@ const styles = StyleSheet.create({
     width: '80%',
     marginBottom: 20,
     fontSize: 18,
+    textAlign: "center",
   },
   buttonRow: {
     flexDirection: 'row',

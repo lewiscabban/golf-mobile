@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, Button, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, TextInput } from 'react-native';
 import Modal from 'react-native-modal';
 
 type HoleModalProps = {
@@ -16,6 +16,7 @@ const HoleModal: React.FC<HoleModalProps> = ({ visible, holeNumber, onClose, onS
   const handleScorePress = (value: number | string) => {
     if (value === "+") {
       setShowCustomInput(true);
+      setScore(null);
     } else {
       setScore(value.toString());
       setShowCustomInput(false);
@@ -48,27 +49,18 @@ const HoleModal: React.FC<HoleModalProps> = ({ visible, holeNumber, onClose, onS
         {/* 3x3 Grid */}
         {!showCustomInput && (
           <View style={styles.grid}>
-            <View style={styles.gridRow}>
-              {[1, 2, 3].map((num) => (
-                <TouchableOpacity key={num} style={styles.gridButton} onPress={() => handleScorePress(num)}>
-                  <Text style={styles.gridButtonText}>{num}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <View style={styles.gridRow}>
-              {[4, 5, 6].map((num) => (
-                <TouchableOpacity key={num} style={styles.gridButton} onPress={() => handleScorePress(num)}>
-                  <Text style={styles.gridButtonText}>{num}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <View style={styles.gridRow}>
-              {[7, 8, "+"].map((num) => (
-                <TouchableOpacity key={num} style={styles.gridButton} onPress={() => handleScorePress(num)}>
-                  <Text style={styles.gridButtonText}>{num}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            {[1, 2, 3, 4, 5, 6, 7, 8, "+"].map((num) => (
+              <TouchableOpacity
+                key={num}
+                style={[
+                  styles.gridButton,
+                  score === num.toString() ? styles.selectedButton : null,
+                ]}
+                onPress={() => handleScorePress(num)}
+              >
+                <Text style={styles.gridButtonText}>{num}</Text>
+              </TouchableOpacity>
+            ))}
           </View>
         )}
 
@@ -86,10 +78,10 @@ const HoleModal: React.FC<HoleModalProps> = ({ visible, holeNumber, onClose, onS
         {/* Buttons */}
         <View style={styles.buttonRow}>
           <TouchableOpacity onPress={onClose}>
-            <Text style={styles.cancelText} >Cancel</Text>
+            <Text style={styles.cancelText}>Cancel</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={handleSave} disabled={!score}>
-            <Text style={styles.saveText} >Save</Text>
+            <Text style={styles.saveText}>Save</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -133,11 +125,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   grid: {
-    flexDirection: "column",
-    flexWrap: "wrap",
-    justifyContent: "center",
-  },
-  gridRow: {
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "center",
@@ -150,6 +137,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     margin: 5,
     borderRadius: 10,
+    borderWidth: 2,
+    borderColor: "transparent",
+  },
+  selectedButton: {
+    borderColor: "#FFD700",
+    borderWidth: 3,
+    backgroundColor: "#388E3C",
   },
   gridButtonText: {
     fontSize: 24,

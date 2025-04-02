@@ -111,6 +111,28 @@ const PlayRoundScreen: React.FC = () => {
           .eq('round_id', RoundID)
           .order('hole', { ascending: true }) as unknown as { data: Score[]; error: any };
 
+        console.log("setting up subscription!")
+        const subscription = supabase
+        .channel(`scores-updates-${RoundID}`) // Unique channel for this round
+        .on(
+          "postgres_changes",
+          { event: "UPDATE", schema: "public", table: "scores", filter: `round_id=eq.${RoundID}` },
+          (payload) => {
+            console.log("Received score update:", payload);
+            console.log(playerScores)
+            let newPlayerScores = [...playerScores]
+            for (let i = 0; i < newPlayerScores.length; i++) {
+              if (newPlayerScores[i].player_id == payload.new.player) {
+                console.log("received update from player: ", newPlayerScores[i].player_id)
+                newPlayerScores[i].scores[payload.new.hole] = payload.new.score
+              }
+            }
+            setPlayerScores(newPlayerScores)
+          }
+        )
+        .subscribe();
+        console.log("set up subscription!")
+
         
         const { data: roundData, error: roundError } = await supabase
           .from('rounds')
@@ -155,6 +177,28 @@ const PlayRoundScreen: React.FC = () => {
 
     fetchScores();
   }, [RoundID]);
+
+  useEffect(() => {
+    const fetchScores = async () => {
+        const subscription = supabase
+        .channel(`scores-updates-${RoundID}`)
+        .on(
+          "postgres_changes",
+          { event: "UPDATE", schema: "public", table: "scores", filter: `round_id=eq.${RoundID}` },
+          (payload) => {
+            let newPlayerScores = [...playerScores]
+            for (let i = 0; i < newPlayerScores.length; i++) {
+              if (newPlayerScores[i].player_id == payload.new.player) {
+                newPlayerScores[i].scores[payload.new.hole] = payload.new.score
+              }
+            }
+            setPlayerScores(newPlayerScores)
+          }
+        )
+        .subscribe();
+      }
+    fetchScores();
+  }, [playerScores]);
 
   const handleOpenHoleModal = (hole: number, player_id: string) => {
     setSelectedHole({ hole, player_id });

@@ -35,8 +35,8 @@ const PlayRoundScreen: React.FC = () => {
   const { RoundID } = route.params;
   const [userId, setUserId] = useState<string | null>(null);
   const [playerScores, setPlayerScores] = useState<PlayerScores[]>([]);
-  const [holes, setHoles] = useState<number[]>([]);
-  const [parValues, setParValues] = useState<(number | string)[]>([]);
+  const [holes, setHoles] = useState<number[]>([0,1,2,3,4,5,6,7,8,9]);
+  const [parValues, setParValues] = useState<(number | string)[]>(["...", "...", "...", "...", "...", "...", "...", "...", "..."]);
   const [loading, setLoading] = useState<boolean>(true);
   const [holeModalVisible, setHoleModalVisible] = useState<boolean>(false);
   const [profileModalVisible, setProfileModalVisible] = useState<boolean>(false);

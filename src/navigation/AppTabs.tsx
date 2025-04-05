@@ -2,7 +2,7 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import DashboardScreen from '../screens/DashboardScreen';
-import ProfileScreen from '../screens/ProfileScreen';
+import PlayScreen from '../screens/PlayScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import CoursesScreen from '../screens/CoursesScreen';
 import AddPlayersScreen from '../screens/AddPlayersScreen';
@@ -13,37 +13,37 @@ import FriendsScreen from '../screens/FriendsScreen';
 import { StackNavigationProp } from '@react-navigation/stack';
 
 const Tab = createBottomTabNavigator();
-const ProfileStack = createNativeStackNavigator();
+const PlayStack = createNativeStackNavigator();
 const DashboardStack = createNativeStackNavigator();
 const SettingsStack = createNativeStackNavigator();
 
 // Define the types for your navigation stack
-type ProfileStackParamList = {
+type PlayStackParamList = {
   PlayRound: undefined;
   Dashboard: undefined;
 };
 
 // Get the typed navigation prop
-type NavigationProp = StackNavigationProp<ProfileStackParamList, "PlayRound">;
+type NavigationProp = StackNavigationProp<PlayStackParamList, "PlayRound">;
 
-const ProfileStackScreen = () => {
+const PlayStackScreen = () => {
   return (
-    <ProfileStack.Navigator
+    <PlayStack.Navigator
       screenOptions={{
         headerBackButtonDisplayMode: 'minimal',
         headerShadowVisible: false,
         contentStyle:{ backgroundColor: '#fff'}
       }}
     >
-      <ProfileStack.Screen name="Profile" component={ProfileScreen} />
-      <ProfileStack.Screen name="Courses" component={CoursesScreen} />
-      <ProfileStack.Screen name="AddPlayers" component={AddPlayersScreen} />
-      <ProfileStack.Screen name="Results" component={ResultsScreen} />
-    </ProfileStack.Navigator>
+      <PlayStack.Screen name="Play" component={PlayScreen} />
+      <PlayStack.Screen name="Courses" component={CoursesScreen} />
+      <PlayStack.Screen name="AddPlayers" component={AddPlayersScreen} />
+      <PlayStack.Screen name="Results" component={ResultsScreen} />
+    </PlayStack.Navigator>
   );
 };
 
-const DasthoardStackScreen = () => {
+const DashboardStackScreen = () => {
     return (
       <DashboardStack.Navigator
         screenOptions={{
@@ -86,8 +86,8 @@ const AppTabs = () => {
 
           if (route.name === 'Dashboard') {
             iconName = 'home';
-          } else if (route.name === 'ProfileStack') {
-            iconName = 'person';
+          } else if (route.name === 'PlayStack') {
+            iconName = 'golf';
           } else if (route.name === 'Settings') {
             iconName = 'settings';
           }
@@ -102,13 +102,13 @@ const AppTabs = () => {
     >
       <Tab.Screen
         name="Dashboard"
-        component={DasthoardStackScreen}
+        component={DashboardStackScreen}
         options={{ headerShown: false }}
       />
       <Tab.Screen
-        name="ProfileStack"
-        component={ProfileStackScreen}
-        options={{ headerShown: false, title: 'Profile' }}
+        name="PlayStack"
+        component={PlayStackScreen}
+        options={{ headerShown: false, title: 'Play' }}
       />
       <Tab.Screen
         name="Settings"

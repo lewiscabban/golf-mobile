@@ -13,6 +13,23 @@ import AddFriendModal from "../components/AddFriendModal";
 import FriendRequestsModal from "../components/FriendRequestsModal";
 import Ionicons from "react-native-vector-icons/Ionicons";
 
+type Friend = {
+  id: number
+  friend_id: string
+  friend_username: string
+};
+
+type Profile = {
+  id: string
+  username: string
+};
+
+type Friends = {
+  id: number
+  sender_id: string
+  receiver_id: string
+};
+
 const FriendsScreen = () => {
   const [friends, setFriends] = useState<any[]>([]);
   const [friendsLoading, setFriendsLoading] = useState(true);
@@ -45,7 +62,7 @@ const FriendsScreen = () => {
       .from("friendships")
       .select("id, sender_id, receiver_id")
       .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
-      .eq("status", "accepted");
+      .eq("status", "accepted") as { data: Friends[]; error: any };
 
     if (error) {
       console.error("Error fetching friends:", error);
@@ -62,7 +79,7 @@ const FriendsScreen = () => {
     const { data: friendProfiles, error: profileError } = await supabase
       .from("profiles")
       .select("id, username")
-      .in("id", friendIds);
+      .in("id", friendIds) as {data: Profile[], error: any};
 
     if (profileError) {
       console.error("Error fetching friend profiles:", profileError);
@@ -72,14 +89,14 @@ const FriendsScreen = () => {
     }
 
     // Map to a simpler structure for rendering
-    const formattedFriends = friendsData.map((friendship) => {
+    const formattedFriends: Friend[] = friendsData.map((friendship) => {
       const friendId =
         friendship.sender_id === user.id ? friendship.receiver_id : friendship.sender_id;
       const friendProfile = friendProfiles.find((profile) => profile.id === friendId);
       return {
         id: friendship.id,
         friend_id: friendId,
-        friend_username: friendProfile?.username,
+        friend_username: friendProfile ? friendProfile.username : "Unknown",
       };
     });
 
@@ -181,7 +198,7 @@ const FriendsScreen = () => {
     );
   };
 
-  const renderFriend = ({ item }: { item: any }) => (
+  const renderFriend = ({ item }: { item: Friend }) => (
     <View style={styles.friendItem}>
       <Text style={styles.friendText}>{item.friend_username}</Text>
       <TouchableOpacity style={styles.deleteButton} onPress={() => handleDeletePress(item.id)}>
@@ -193,32 +210,39 @@ const FriendsScreen = () => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>My Friends</Text>
-      {friendsLoading ? (
-        <ActivityIndicator size="large" color="#0000ff" />
-      ) : (
-        <FlatList
-          data={friends}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={renderFriend}
-        />
-      )}
 
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => setAddFriendModalVisible(true)}
-      >
-        <Text style={styles.buttonText}>Add Friend</Text>
-      </TouchableOpacity>
+      <View style={styles.contentContainer}>
+        {friendsLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#0000ff" />
+          </View>
+        ) : (
+          <FlatList
+            data={friends}
+            keyExtractor={(item) => item.id.toString()}
+            renderItem={renderFriend}
+          />
+        )}
 
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => {
-          fetchFriendRequests();
-          setFriendRequestsModalVisible(true);
-        }}
-      >
-        <Text style={styles.buttonText}>Friend Requests</Text>
-      </TouchableOpacity>
+        <View style={styles.bottomButtons}>
+          <TouchableOpacity
+            style={styles.button}
+            onPress={() => setAddFriendModalVisible(true)}
+          >
+            <Text style={styles.buttonText}>Add Friend</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.button}
+            onPress={() => {
+              fetchFriendRequests();
+              setFriendRequestsModalVisible(true);
+            }}
+          >
+            <Text style={styles.buttonText}>Friend Requests</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
 
       <AddFriendModal
         visible={addFriendModalVisible}
@@ -269,6 +293,18 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   friendText: { fontSize: 16 },
+  contentContainer: {
+    flex: 1,
+    justifyContent: 'space-between',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  bottomButtons: {
+    paddingTop: 8,
+  },
 });
 
 export default FriendsScreen;

@@ -1,9 +1,23 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert, StyleSheet } from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  Alert,
+  StyleSheet,
+  KeyboardAvoidingView,
+  ScrollView,
+  Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
+  findNodeHandle,
+  UIManager,
+} from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 import { supabase } from '../supabase/supabaseClient';
 import { CommonActions, NavigationProp, useNavigation } from '@react-navigation/native';
-
+import { TextInput as RNTextInput } from 'react-native';
 
 type RootStackParamList = {
   Home: undefined;
@@ -18,7 +32,14 @@ const SignupScreen = () => {
   const [lastName, setLastName] = useState('');
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
-    const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+  const firstNameRef = React.useRef<RNTextInput>(null);
+  const lastNameRef = React.useRef<RNTextInput>(null);
+  const usernameRef = React.useRef<RNTextInput>(null);
+  const emailRef = React.useRef<RNTextInput>(null);
+  const passwordRef = React.useRef<RNTextInput>(null);
+  const scrollRef = React.useRef<ScrollView>(null);
+
 
   const handleSignup = async () => {
     if (!email || !password || !firstName || !lastName || !username) {
@@ -50,48 +71,142 @@ const SignupScreen = () => {
     Alert.alert('Signup Successful', 'Your account has been created!');
   };
 
-  const handleSignIn = async () => {
+  const handleSignIn = () => {
     navigation.dispatch(
       CommonActions.reset({
         index: 0,
         routes: [{ name: 'Home' }, { name: 'Login' }],
       })
     );
-  }
+  };
+
+  const scrollToInput = (ref: React.RefObject<any>) => {
+    const nodeHandle = findNodeHandle(ref.current);
+    const scrollHandle = findNodeHandle(scrollRef.current);
+  
+    if (nodeHandle && scrollHandle && ref.current && scrollRef.current) {
+      UIManager.measureLayout(
+        nodeHandle,
+        scrollHandle,
+        () => {}, // Empty error callback to match expected signature
+        (x: number, y: number) => {
+          scrollRef.current?.scrollTo({ y: y - 20, animated: true });
+        }
+      );
+    }
+  };
+   
 
   return (
-    <View style={styles.container}>
-      <View style={styles.card}>
-        <Text style={styles.title}>Create an Account</Text>
-        <TouchableOpacity style={styles.authButton}>
-          <FontAwesome name="google" size={20} color="#EA4335" />
-          <Text style={styles.authText}>Sign up with Google</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.authButton}>
-          <FontAwesome name="apple" size={20} color="#000" />
-          <Text style={styles.authText}>Sign up with Apple</Text>
-        </TouchableOpacity>
-        <Text style={styles.orText}>Or continue with Email</Text>
-        <TextInput style={styles.input} placeholder="First Name" value={firstName} onChangeText={setFirstName} />
-        <TextInput style={styles.input} placeholder="Last Name" value={lastName} onChangeText={setLastName} />
-        <TextInput style={styles.input} placeholder="Username" value={username} onChangeText={setUsername} />
-        <TextInput style={styles.input} placeholder="Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
-        <TextInput style={styles.input} placeholder="Password" value={password} onChangeText={setPassword} secureTextEntry />
-        <TouchableOpacity style={styles.loginButton} onPress={handleSignup} disabled={loading}>
-          <Text style={styles.buttonText}>{loading ? 'Signing up...' : 'Sign Up'}</Text>
-        </TouchableOpacity>
-        <View style={styles.signupContainer}>
-          <Text style={styles.signupText}>Have an account?</Text>
-          <TouchableOpacity onPress={handleSignIn} disabled={loading}>
-            <Text style={styles.signupLink}> Sign in</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </View>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
+    >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <ScrollView 
+          contentContainerStyle={styles.scrollContainer}
+          ref={scrollRef}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.container}>
+            <View style={styles.card}>
+              <Text style={styles.title}>Create an Account</Text>
+              <TouchableOpacity style={styles.authButton}>
+                <FontAwesome name="google" size={20} color="#EA4335" />
+                <Text style={styles.authText}>Sign up with Google</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.authButton}>
+                <FontAwesome name="apple" size={20} color="#000" />
+                <Text style={styles.authText}>Sign up with Apple</Text>
+              </TouchableOpacity>
+              <Text style={styles.orText}>Or continue with Email</Text>
+
+              <TextInput
+                ref={firstNameRef}
+                style={styles.input}
+                placeholder="First Name"
+                value={firstName}
+                onChangeText={setFirstName}
+                returnKeyType="next"
+                onSubmitEditing={() => {
+                  scrollToInput(lastNameRef)
+                  lastNameRef.current?.focus()
+                }}
+              />
+              <TextInput
+                ref={lastNameRef}
+                style={styles.input}
+                placeholder="Last Name"
+                value={lastName}
+                onChangeText={setLastName}
+                returnKeyType="next"
+                onSubmitEditing={() => {
+                  scrollToInput(usernameRef)
+                  usernameRef.current?.focus()
+                }}
+              />
+              <TextInput
+                ref={usernameRef}
+                style={styles.input}
+                placeholder="Username"
+                value={username}
+                onChangeText={setUsername}
+                returnKeyType="next"
+                onSubmitEditing={() => {
+                  scrollToInput(emailRef)
+                  emailRef.current?.focus()
+                }}
+              />
+              <TextInput
+                ref={emailRef}
+                style={styles.input}
+                placeholder="Email"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                returnKeyType="next"
+                onSubmitEditing={() => {
+                  scrollToInput(passwordRef)
+                  passwordRef.current?.focus()
+                }}
+              />
+              <TextInput
+                ref={passwordRef}
+                style={styles.input}
+                placeholder="Password"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                returnKeyType="done"
+                onSubmitEditing={handleSignup}
+              />
+
+              <TouchableOpacity style={styles.loginButton} onPress={handleSignup} disabled={loading}>
+                <Text style={styles.buttonText}>{loading ? 'Signing up...' : 'Sign Up'}</Text>
+              </TouchableOpacity>
+
+              <View style={styles.signupContainer}>
+                <Text style={styles.signupText}>Have an account?</Text>
+                <TouchableOpacity onPress={handleSignIn} disabled={loading}>
+                  <Text style={styles.signupLink}> Sign in</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </ScrollView>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
+  scrollContainer: {
+    flexGrow: 1,
+    justifyContent: 'center',
+  },
   container: {
     flex: 1,
     justifyContent: 'center',
@@ -142,17 +257,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 10,
   },
-  inputError: {
-    borderColor: 'red',
-  },
-  errorText: {
-    color: 'red',
-    marginBottom: 10,
-  },
-  forgotText: {
-    color: '#007bff',
-    marginBottom: 10,
-  },
   loginButton: {
     backgroundColor: '#000',
     padding: 15,
@@ -161,9 +265,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 15,
   },
-  loginButtonText: {
-    color: '#fff',
-    fontSize: 16,
+  buttonText: {
+    color: 'white',
+    fontSize: 18,
     fontWeight: 'bold',
   },
   signupContainer: {
@@ -177,18 +281,6 @@ const styles = StyleSheet.create({
   },
   signupLink: {
     color: '#007bff',
-    fontWeight: 'bold',
-  },
-  button: {
-    backgroundColor: 'black',
-    paddingVertical: 12,
-    paddingHorizontal: 40,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: 'white',
-    fontSize: 18,
     fontWeight: 'bold',
   },
 });

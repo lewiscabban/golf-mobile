@@ -1,8 +1,17 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Button, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { supabase } from '../supabase/supabaseClient';
 import { FontAwesome } from '@expo/vector-icons';
 import { CommonActions, NavigationProp, useNavigation } from '@react-navigation/native';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  TouchableWithoutFeedback,
+  Keyboard,
+} from 'react-native';
+
+import { findNodeHandle, UIManager } from 'react-native';
 
 type RootStackParamList = {
   Home: undefined;
@@ -18,6 +27,11 @@ const LoginScreen = () => {
   const [passwordError, setPasswordError] = useState(false);
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
+  // Refs for input fields
+  const emailRef = React.useRef<TextInput>(null);
+  const passwordRef = React.useRef<TextInput>(null);
+  const scrollRef = React.useRef<ScrollView>(null);
+
   const handleLogin = async () => {
     setEmailError(!email);
     setPasswordError(!password);
@@ -25,7 +39,7 @@ const LoginScreen = () => {
     if (!email || !password) {
       return;
     }
-    
+
     setLoading(true);
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
       email,
@@ -63,58 +77,118 @@ const LoginScreen = () => {
   };
 
   const handleCreateAccount = async () => {
-      navigation.dispatch(
-        CommonActions.reset({
-          index: 0,
-          routes: [{ name: 'Home' }, { name: 'Signup' }],
-        })
+    navigation.dispatch(
+      CommonActions.reset({
+        index: 0,
+        routes: [{ name: 'Home' }, { name: 'Signup' }],
+      })
+    );
+  };
+
+  // Function to scroll to the next input
+  const scrollToInput = (ref: React.RefObject<TextInput>) => {
+    const nodeHandle = findNodeHandle(ref.current);
+    const scrollHandle = findNodeHandle(scrollRef.current);
+
+    if (nodeHandle && scrollHandle && ref.current && scrollRef.current) {
+      UIManager.measureLayout(
+        nodeHandle,
+        scrollHandle,
+        () => {}, // Empty error callback
+        (x: number, y: number) => {
+          scrollRef.current?.scrollTo({ y: y - 20, animated: true });
+        }
       );
-  }
+    }
+  };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.card}>
-        <Text style={styles.title}>Sign in to your account</Text>
-        <TouchableOpacity style={styles.authButton}>
-          <FontAwesome name="google" size={20} color="#EA4335" />
-          <Text style={styles.authText}>Sign in with Google</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.authButton}>
-          <FontAwesome name="apple" size={20} color="#000" />
-          <Text style={styles.authText}>Sign in with Apple</Text>
-        </TouchableOpacity>
-        <Text style={styles.orText}>Or continue with Email</Text>
-        <TextInput
-          style={[styles.input, emailError && styles.inputError]}
-          placeholder="Email address"
-          value={email}
-          onChangeText={text => { setEmail(text); setEmailError(false); }}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
-        {emailError && <Text style={styles.errorText}>Please enter your email</Text>}
-        <TextInput
-          style={[styles.input, passwordError && styles.inputError]}
-          placeholder="Password"
-          value={password}
-          onChangeText={text => { setPassword(text); setPasswordError(false); }}
-          secureTextEntry
-        />
-        {passwordError && <Text style={styles.errorText}>Please enter your password</Text>}
-        <TouchableOpacity onPress={() => console.log('Forgot password clicked!')}>
-          <Text style={styles.forgotText}>Forgot password?</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.loginButton} onPress={handleLogin} disabled={loading}>
-          <Text style={styles.loginButtonText}>{loading ? 'Logging in...' : 'Login'}</Text>
-        </TouchableOpacity>
-        <View style={styles.signupContainer}>
-          <Text style={styles.signupText}>Not a member?</Text>
-          <TouchableOpacity onPress={handleCreateAccount} disabled={loading}>
-            <Text style={styles.signupLink}>Create an account</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </View>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
+    >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContainer}
+          ref={scrollRef}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.container}>
+            <View style={styles.card}>
+              <Text style={styles.title}>Sign in to your account</Text>
+
+              <TouchableOpacity style={styles.authButton}>
+                <FontAwesome name="google" size={20} color="#EA4335" />
+                <Text style={styles.authText}>Sign in with Google</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.authButton}>
+                <FontAwesome name="apple" size={20} color="#000" />
+                <Text style={styles.authText}>Sign in with Apple</Text>
+              </TouchableOpacity>
+
+              <Text style={styles.orText}>Or continue with Email</Text>
+
+              <TextInput
+                ref={emailRef}
+                style={[styles.input, emailError && styles.inputError]}
+                placeholder="Email address"
+                value={email}
+                onChangeText={(text) => {
+                  setEmail(text);
+                  setEmailError(false);
+                }}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                returnKeyType="next"
+                onSubmitEditing={() => {
+                  scrollToInput(passwordRef)
+                  passwordRef.current?.focus()
+                }}
+              />
+              {emailError && <Text style={styles.errorText}>Please enter your email</Text>}
+
+              <TextInput
+                ref={passwordRef}
+                style={[styles.input, passwordError && styles.inputError]}
+                placeholder="Password"
+                value={password}
+                onChangeText={(text) => {
+                  setPassword(text);
+                  setPasswordError(false);
+                }}
+                secureTextEntry
+                returnKeyType="done"
+                onSubmitEditing={handleLogin}
+              />
+              {passwordError && <Text style={styles.errorText}>Please enter your password</Text>}
+
+              <TouchableOpacity onPress={() => console.log('Forgot password clicked!')}>
+                <Text style={styles.forgotText}>Forgot password?</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.loginButton}
+                onPress={handleLogin}
+                disabled={loading}
+              >
+                <Text style={styles.loginButtonText}>
+                  {loading ? 'Logging in...' : 'Login'}
+                </Text>
+              </TouchableOpacity>
+
+              <View style={styles.signupContainer}>
+                <Text style={styles.signupText}>Not a member?</Text>
+                <TouchableOpacity onPress={handleCreateAccount} disabled={loading}>
+                  <Text style={styles.signupLink}>Create an account</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </ScrollView>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 };
 
@@ -205,6 +279,10 @@ const styles = StyleSheet.create({
   signupLink: {
     color: '#007bff',
     fontWeight: 'bold',
+  },
+  scrollContainer: {
+    flexGrow: 1,
+    justifyContent: 'center',
   },
 });
 

@@ -26,11 +26,13 @@ const DashboardScreen = () => {
   const [rounds, setRounds] = useState<Round[]>([]);
   const [scoresMap, setScoresMap] = useState<Record<number, ScoresRow[]>>({});
   const [holesPlayedMap, setHolesPlayedMap] = useState<Record<number, number>>({});
-  const [parMap, setParMap] = useState<Record<number, number>>({});
+  const [totalParMap, setTotalParMap] = useState<Record<number, number>>({});
   const [courseNames, setCourseNames] = useState<Record<string, string>>({});
+  const [courseHoles, setCourseHoles] = useState<Record<string, number>>({});
   const [clubNames, setClubNames] = useState<Record<string, string>>({});
   const [courseClubMap, setCourseClubMap] = useState<Record<string, string>>({});
   const [playersMap, setPlayersMap] = useState<Record<number, ProfilesRow[]>>({});
+  const [parMap, setParMap] = useState<Record<number, Record<number, number | null>>>({});
   const [loading, setLoading] = useState(true);
   const [moreLoading, setMoreLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -173,8 +175,6 @@ const DashboardScreen = () => {
                 .order("created_at", { ascending: false })
                 .in('id', allRoundIds)
                 .limit(nextItemsPerPage);
-
-            console.log(finalRoundsData?.length)
   
             if (finalRoundsError) {
                 console.error('Error fetching final rounds:', finalRoundsError);
@@ -206,7 +206,7 @@ const DashboardScreen = () => {
     if (courseIds.length > 0) {
       const { data: coursesData, error: coursesError } = await supabase
         .from('courses')
-        .select('CourseID::text, CourseName, ClubID::text')
+        .select('CourseID::text, CourseName, ClubID::text, NumHoles')
         .in('CourseID', courseIds);
 
       if (coursesError) {
@@ -216,20 +216,24 @@ const DashboardScreen = () => {
       }
 
       const courseNameMap: Record<string, string> = {};
+      const courseHoleMap: Record<string, number> = {};
       const clubIdSet = new Set<string>();
       const courseClubMap: Record<string, string> = {};
 
       (coursesData as Partial<Courses>[]).forEach((course) => {
+        console.log(course)
         if (course.CourseID && course.CourseName) {
           courseNameMap[course.CourseID] = course.CourseName;
+          courseHoleMap[course.CourseID] = course.NumHoles || 0;
           if (course.ClubID) {
             courseClubMap[course.CourseID] = course.ClubID;
             clubIdSet.add(course.ClubID);
           }
         }
       });
-
+      console.log(courseHoleMap)
       setCourseNames(courseNameMap);
+      setCourseHoles(courseHoleMap);
       setCourseClubMap(courseClubMap);
 
       if (clubIdSet.size > 0) {
@@ -270,17 +274,31 @@ const DashboardScreen = () => {
   };
 
   const calculateTotalScore = (scores: ScoresRow[], player: ProfilesRow | null = null): number => {
+    let player_scores: ScoresRow[] = []
     if (player) {
-      scores = scores.filter(score => score.player === player.id)
+      player_scores = scores.filter(score => score.player === player.id)
     }
-    return scores.reduce((total, score) => total + (score.score || 0), 0);
+    const totalScore = player_scores.reduce((total, score) => total + (score.score || 0), 0);
+    return totalScore
   };
 
-  const calculateHolesPlayed = (scores: ScoresRow[], player: ProfilesRow | null = null): number => {
+  const calculateParThroughHolesPlayed = (scores: ScoresRow[], roundId: number, player: ProfilesRow | null = null): number => {
+    let player_scores: ScoresRow[] = []
     if (player) {
-      scores = scores.filter(score => score.player === player.id)
+      player_scores = scores.filter(score => score.player === player.id)
     }
-    return scores.filter(score => score.score !== null).length;
+    let scoreThroughHolesPlayed = player_scores.filter(score => score.score !== null);
+    let parThroughHolesPlayed = scoreThroughHolesPlayed.reduce((total, score) => total + (parMap[roundId][score.hole] || 0), 0)
+    return parThroughHolesPlayed;
+  };
+
+  const calculateHolesPlayed = (scores: ScoresRow[], roundId: number, player: ProfilesRow | null = null): number => {
+    let player_scores: ScoresRow[] = []
+    if (player) {
+      player_scores = scores.filter(score => score.player === player.id)
+    }
+    let scoreThroughHolesPlayed = player_scores.filter(score => score.score !== null);
+    return scoreThroughHolesPlayed.length;
   };
 
   const fetchAllScoresAndPars = async (rounds: Round[]) => {
@@ -291,13 +309,13 @@ const DashboardScreen = () => {
       scores[round.id] = await fetchScores(round.id);
 
       if (round.course_id) {
-        const coursePar = await fetchCoursePar(round.course_id, scores[round.id]);
+        const coursePar = await fetchCoursePar(round.course_id, scores[round.id], round.id);
         pars[round.id] = coursePar;
       }
     }
 
     setScoresMap(scores);
-    setParMap(pars);
+    setTotalParMap(pars);
   };
 
   const fetchPlayers = async (rounds: Round[]) => {
@@ -333,7 +351,7 @@ const DashboardScreen = () => {
     setPlayersMap(playersMap);
   };
 
-  const fetchCoursePar = async (courseId: string, scores: ScoresRow[]): Promise<number> => {
+  const fetchCoursePar = async (courseId: string, scores: ScoresRow[], roundId: number): Promise<number> => {
     const { data, error } = await supabase
       .from('courses')
       .select('Par1, Par2, Par3, Par4, Par5, Par6, Par7, Par8, Par9, Par10, Par11, Par12, Par13, Par14, Par15, Par16, Par17, Par18')
@@ -366,6 +384,9 @@ const DashboardScreen = () => {
       17: course.Par17,
       18: course.Par18,
     };
+    let newParMap = parMap
+    newParMap[roundId] = holePars
+    setParMap(newParMap)
 
     const totalPar = scores.reduce((total, score) => {
       if (score.score != null) {
@@ -409,6 +430,8 @@ const DashboardScreen = () => {
     const clubName = clubId ? clubNames[clubId] : 'Loading';
     const createdAt = new Date(item.created_at).toLocaleDateString(); // Format date
     const players = playersMap[item.id] || []; // List of players
+    let totalPar = `${totalParMap[item.id]}`;
+    const holes = courseHoles[item.course_id]
   
     return (
       <TouchableOpacity 
@@ -417,22 +440,23 @@ const DashboardScreen = () => {
       >
         <View style={styles.roundHeader}>
           <Text style={styles.clubName}>{clubName}</Text>
-          <Text style={styles.roundInfo}>{createdAt} - {courseName} - 18 Holes</Text>
+          <Text style={styles.roundInfo}>{createdAt} - {courseName} - {holes} Holes</Text>
         </View>
   
         <View style={styles.tableHeader}>
           <Text style={styles.headerText}>Player</Text>
           <Text style={styles.headerText}>Score</Text>
           <Text style={styles.headerText}>Gross</Text>
-          <Text style={styles.headerText}>Par</Text>
+          <Text style={styles.headerText}>Holes</Text>
         </View>
   
         {players.map((player) => {
           const totalScore = calculateTotalScore(scoresMap[item.id], player);
-          const score = (totalScore - (parMap[item.id] || 0))
-          let grossScore = score < 0 ? `${score}` : `+${score}`;
-          let totalPar = `${parMap[item.id]}`;
-          if (parMap[item.id] == 0) {
+          const parThroughHolesPlayed = calculateParThroughHolesPlayed(scoresMap[item.id], item.id, player)
+          const score = (totalScore - (parThroughHolesPlayed || 0))
+          const holesPlayed = calculateHolesPlayed(scoresMap[item.id], item.id, player)
+          let grossScore = score < 1 ? `${score}` : `+${score}`;
+          if (totalParMap[item.id] == 0) {
             grossScore = "N/A";
             totalPar = "N/A";
           }
@@ -442,7 +466,7 @@ const DashboardScreen = () => {
               <Text style={styles.rowText}>{player.username}</Text>
               <Text style={styles.rowText}>{totalScore}</Text>
               <Text style={styles.rowText}>{grossScore}</Text>
-              <Text style={styles.rowText}>{totalPar}</Text>
+              <Text style={styles.rowText}>{holesPlayed}/{holes}</Text>
             </View>
           );
         })}

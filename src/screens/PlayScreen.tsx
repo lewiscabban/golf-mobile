@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity, TextInput } from 'react-native';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { supabase } from '../supabase/supabaseClient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { searchClubsByClubName } from '../supabase/supabaseGetters'
 
 type Clubs = {
   ClubID: string,
@@ -17,34 +18,15 @@ type ProfileStackParamList = {
 const ProfileScreen = () => {
   const navigation = useNavigation<NavigationProp<ProfileStackParamList>>();
   const [data, setData] = useState<Clubs[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    fetchData('');
+    searchClubsByClubName('', setData);
   }, []);
-
-  const fetchData = async (query: string) => {
-    setLoading(true);
-    let supabaseQuery = supabase.from('clubs').select('ClubID::text, ClubName');
-    
-    if (query.trim()) {
-      supabaseQuery = supabaseQuery.ilike('ClubName', `%${query}%`);
-    }
-    
-    const { data: clubs, error } = await supabaseQuery;
-
-    if (error) {
-      console.error('Error fetching data:', error);
-    } else {
-      setData(clubs || []);
-    }
-    setLoading(false);
-  };
 
   const handleSearch = (text: string) => {
     setSearchQuery(text);
-    fetchData(text);
+    searchClubsByClubName(text, setData);
   };
 
   const renderItem = ({ item }: { item: Clubs }) => (
@@ -69,16 +51,12 @@ const ProfileScreen = () => {
         value={searchQuery}
         onChangeText={handleSearch}
       />
-      {loading ? (
-        <ActivityIndicator size="large" color="#0000ff" />
-      ) : (
-        <FlatList
-          data={data}
-          keyExtractor={(item) => item.ClubID}
-          renderItem={renderItem}
-          contentContainerStyle={styles.list}
-        />
-      )}
+      <FlatList
+        data={data}
+        keyExtractor={(item) => item.ClubID}
+        renderItem={renderItem}
+        contentContainerStyle={styles.list}
+      />
     </View>
   );
 };

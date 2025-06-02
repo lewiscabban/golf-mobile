@@ -9,6 +9,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { supabase } from '../supabase/supabaseClient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { fetchCoursePar } from '../utils/scoresUtils';
 
 type ProfileStackParamList = {
   AddPlayers: { ClubID: number; CourseID: number };
@@ -38,6 +39,7 @@ const AddPlayersScreen = () => {
   const [playerName, setPlayerName] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [selectedPlayers, setSelectedPlayers] = useState<Players[]>([]);
+  const [coursePars, setCoursePars] = useState<Record<number, number | null>>([]);
   const [loading, setLoading] = useState(false);
   const [isDropdownVisible, setDropdownVisible] = useState(false);
 
@@ -51,7 +53,14 @@ const AddPlayersScreen = () => {
       }
     };
 
+    const fetchPar = async () => {
+      let parMap: Record<number, number | null> = []
+      parMap = await fetchCoursePar(CourseID.toString());
+      setCoursePars(parMap)
+    }
+
     fetchUserId();
+    fetchPar();
   }, []);
 
   useEffect(() => {
@@ -146,7 +155,8 @@ const AddPlayersScreen = () => {
           .map((hole) => ({
             round_id: roundData.id,
             player: player.id,
-            hole,
+            hole: hole,
+            par: coursePars[hole]
           }))
       );
 

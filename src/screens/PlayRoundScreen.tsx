@@ -10,6 +10,7 @@ import ProfileModal from '../components/ProfileModal';
 type Score = {
   hole: number;
   score: number | null;
+  par: number | null;
   player: string;
   profiles: { username: string };
 };
@@ -22,6 +23,7 @@ type Par = {
 type PlayerScores = {
   player_id: string;
   player_name: string;
+  pars: { [hole: number]: number | null };
   scores: { [hole: number]: number | null };
 };
 
@@ -107,7 +109,7 @@ const PlayRoundScreen: React.FC = () => {
       try {
         const { data: scoresData, error } = await supabase
           .from('scores')
-          .select('hole, score, player, profiles(username)')
+          .select('hole, par, score, player, profiles(username)')
           .eq('round_id', RoundID)
           .order('hole', { ascending: true }) as unknown as { data: Score[]; error: any };
 
@@ -155,10 +157,11 @@ const PlayRoundScreen: React.FC = () => {
           const playerName = score.profiles.username;
           
           if (!scoresByPlayer[playerId]) {
-            scoresByPlayer[playerId] = { player_id: playerId, player_name: playerName, scores: {} };
+            scoresByPlayer[playerId] = { player_id: playerId, player_name: playerName, pars: {}, scores: {} };
           }
           
           scoresByPlayer[playerId].scores[score.hole] = score.score;
+          scoresByPlayer[playerId].pars[score.hole] = score.par;
           holeSet.add(score.hole);
         });
     
@@ -231,7 +234,7 @@ const PlayRoundScreen: React.FC = () => {
       } else {
         const { data, error } = await supabase
           .from('scores')
-          .update({ score: newScore })
+          .update({ score: newScore, par: parValues[hole-1] })
           .eq('round_id', RoundID)
           .eq('hole', hole)
           .eq('player', player_id);

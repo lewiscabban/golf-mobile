@@ -3,9 +3,9 @@ import { View, Text, ScrollView, TouchableOpacity, Alert, StyleSheet, Modal, Pre
 import { useRoute, RouteProp, useNavigation, NavigationProp } from '@react-navigation/native';
 import { supabase } from '../supabase/supabaseClient';
 import HoleModal from '../components/HoleModal';
-import { fetchCoursePar } from '../utils/scoresUtils';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import ProfileModal from '../components/ProfileModal';
+import ParModal from '../components/ParModal';
 
 type Score = {
   hole: number;
@@ -41,8 +41,10 @@ const PlayRoundScreen: React.FC = () => {
   const [parValues, setParValues] = useState<(number | string)[]>(["...", "...", "...", "...", "...", "...", "...", "...", "..."]);
   const [loading, setLoading] = useState<boolean>(true);
   const [holeModalVisible, setHoleModalVisible] = useState<boolean>(false);
+  const [parModalVisible, setParModalVisible] = useState<boolean>(false);
   const [profileModalVisible, setProfileModalVisible] = useState<boolean>(false);
   const [selectedHole, setSelectedHole] = useState<{ hole: number; player_id: string } | null>(null);
+  const [selectedPar, setSelectedPar] = useState<number | null>(null);
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
   const [optionsModalVisible, setOptionsModalVisible] = useState<boolean>(false);
 
@@ -147,10 +149,6 @@ const PlayRoundScreen: React.FC = () => {
         const scoresByPlayer: { [key: string]: PlayerScores } = {};
         const holeSet = new Set<number>();
         let parMap: Record<number, number | null> = []
-
-        if ( roundData.length === 1 ) {
-          parMap = await fetchCoursePar(roundData[0].course_id);
-        }
     
         scoresData.forEach((score) => {
           const playerId = score.player;
@@ -162,6 +160,7 @@ const PlayRoundScreen: React.FC = () => {
           
           scoresByPlayer[playerId].scores[score.hole] = score.score;
           scoresByPlayer[playerId].pars[score.hole] = score.par;
+          parMap[score.hole] = score.par;
           holeSet.add(score.hole);
         });
     
@@ -213,6 +212,16 @@ const PlayRoundScreen: React.FC = () => {
     setHoleModalVisible(false);
   };
 
+  const handleOpenParModal = (hole: number) => {
+    setSelectedPar(hole);
+    setParModalVisible(true);
+  };
+
+  const handleCloseParModal = () => {
+    setSelectedPar(null);
+    setParModalVisible(false);
+  };
+
   const handleOpenProfileModal = (player_id: string) => {
     setSelectedPlayer(player_id);
     setProfileModalVisible(true);
@@ -234,7 +243,7 @@ const PlayRoundScreen: React.FC = () => {
       } else {
         const { data, error } = await supabase
           .from('scores')
-          .update({ score: newScore, par: parValues[hole-1] })
+          .update({ score: newScore})
           .eq('round_id', RoundID)
           .eq('hole', hole)
           .eq('player', player_id);
@@ -251,6 +260,34 @@ const PlayRoundScreen: React.FC = () => {
       }
 
       handleCloseHoleModal();
+    } catch (err) {
+      Alert.alert('Error', `Could not save score. Please try again.`);
+    }
+  };
+
+  const handleSavePar = async (hole: number, newPar: number) => {
+    try {
+      let userCanEdit = false
+      for (let i = 0; i < playerScores.length; i++) {
+        if (playerScores[i].player_id === userId) {userCanEdit = true}
+      }
+      if (!userCanEdit) {
+        Alert.alert('Error', `Only players can edit scores in this game.`)
+      } else {
+        const { data, error } = await supabase
+          .from('scores')
+          .update({ par: newPar})
+          .eq('round_id', RoundID)
+          .eq('hole', hole)
+
+        if (error) throw error;
+
+        let prevParValues = [...parValues]
+        prevParValues[hole-1] = newPar
+        setParValues(prevParValues);
+      }
+
+      handleCloseParModal();
     } catch (err) {
       Alert.alert('Error', `Could not save score. Please try again.`);
     }
@@ -334,7 +371,15 @@ const PlayRoundScreen: React.FC = () => {
           </View>
           <View style={styles.headerRow}>
             {parValues.map((par, index) => (
-              <Text key={index} style={styles.headerCell}>{par}</Text>
+              <View>
+                <TouchableOpacity
+                  key={index}
+                  style={styles.scoreCell}
+                  onPress={() => handleOpenParModal(index+1)}
+                >
+                  <Text key={index+1} style={styles.headerCell}>{par}</Text>
+                </TouchableOpacity>
+              </View>
             ))}
           </View>
           {playerScores.map((player, index) => (
@@ -373,6 +418,15 @@ const PlayRoundScreen: React.FC = () => {
             visible={profileModalVisible}
             playerId={selectedPlayer}
             onClose={handleCloseProfileModal}
+          />
+        )}
+
+        {selectedPar && (
+          <ParModal
+            visible={parModalVisible}
+            parNumber={selectedPar}
+            onClose={handleCloseParModal}
+            onSave={(holeNumber, newScore) => handleSavePar(holeNumber, newScore)}
           />
         )}
       </ScrollView>

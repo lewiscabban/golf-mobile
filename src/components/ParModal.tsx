@@ -1,0 +1,170 @@
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, TextInput } from 'react-native';
+import Modal from 'react-native-modal';
+
+type ParModalProps = {
+  visible: boolean;
+  parNumber: number | null;
+  onClose: () => void;
+  onSave: (parNumber: number, newScore: number) => void;
+};
+
+const ParModal: React.FC<ParModalProps> = ({ visible, parNumber, onClose, onSave }) => {
+  const [score, setScore] = useState<string | null>(null);
+  const [showCustomInput, setShowCustomInput] = useState(false);
+
+  const handleScorePress = (value: number | string) => {
+    if (value === "+") {
+      setShowCustomInput(true);
+      setScore(null);
+    } else {
+      setScore(value.toString());
+      setShowCustomInput(false);
+    }
+  };
+
+  const handleSave = () => {
+    if (parNumber !== null && score) {
+      onSave(parNumber, parseInt(score, 10));
+      setScore(null);
+      setShowCustomInput(false);
+    }
+  };
+
+  return (
+    <Modal
+      isVisible={visible}
+      swipeDirection={['down']}
+      onSwipeComplete={onClose}
+      onBackdropPress={onClose}
+      backdropColor="rgba(0, 0, 0, 0.5)"
+      backdropOpacity={0.7}
+      style={styles.modal}
+    >
+      <View style={styles.content}>
+        <Text style={styles.text}>
+          {parNumber ? `Enter Score for Par ${parNumber}` : 'No par selected'}
+        </Text>
+
+        {/* 3x3 Grid */}
+        {!showCustomInput && (
+          <View style={styles.grid}>
+            {[3, 4, 5, "+"].map((num) => (
+              <TouchableOpacity
+                key={num}
+                style={[
+                  styles.gridButton,
+                  score === num.toString() ? styles.selectedButton : null,
+                ]}
+                onPress={() => handleScorePress(num)}
+              >
+                <Text style={styles.gridButtonText}>{num}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        {/* Custom Input Field */}
+        {showCustomInput && (
+          <TextInput
+            style={styles.input}
+            placeholder="Enter Custom Score"
+            keyboardType="numeric"
+            value={score ?? ""}
+            onChangeText={setScore}
+          />
+        )}
+
+        {/* Buttons */}
+        <View style={styles.buttonRow}>
+          <TouchableOpacity onPress={onClose}>
+            <Text style={styles.cancelText}>Cancel</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleSave} disabled={!score}>
+            <Text style={styles.saveText}>Save</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
+const styles = StyleSheet.create({
+  modal: {
+    justifyContent: 'flex-end',
+    margin: 0,
+  },
+  content: {
+    backgroundColor: '#FFF',
+    padding: 30,
+    borderRadius: 10,
+    alignItems: 'center',
+    height: '70%',
+    width: '100%',
+    alignSelf: 'center',
+  },
+  text: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 20,
+  },
+  cancelText: {
+    fontSize: 18,
+    padding: 20,
+    fontWeight: 'bold',
+    color: '#000000',
+    flex: 1,
+    textAlign: 'center',
+  },
+  saveText: {
+    fontSize: 18,
+    padding: 20,
+    fontWeight: 'bold',
+    color: '#4CAF50',
+    flex: 1,
+    textAlign: 'center',
+  },
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+  },
+  gridButton: {
+    width: 60,
+    height: 60,
+    backgroundColor: "#4CAF50",
+    justifyContent: "center",
+    alignItems: "center",
+    margin: 5,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: "transparent",
+  },
+  selectedButton: {
+    borderColor: "#FFD700",
+    borderWidth: 3,
+    backgroundColor: "#388E3C",
+  },
+  gridButtonText: {
+    fontSize: 24,
+    color: "#FFF",
+    fontWeight: "bold",
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 5,
+    padding: 10,
+    width: '80%',
+    marginBottom: 20,
+    fontSize: 18,
+    textAlign: "center",
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '80%',
+  },
+});
+
+export default ParModal;

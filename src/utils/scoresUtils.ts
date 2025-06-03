@@ -69,7 +69,7 @@ export const fetchScores = async (roundId: number): Promise<ScoresRow[]> => {
 export const fetchCoursePar = async (courseId: string): Promise<Record<number, number | null>> => {
   const { data, error } = await supabase
     .from('courses')
-    .select('Par1, Par2, Par3, Par4, Par5, Par6, Par7, Par8, Par9, Par10, Par11, Par12, Par13, Par14, Par15, Par16, Par17, Par18')
+    .select('Par1, Par2, Par3, Par4, Par5, Par6, Par7, Par8, Par9, Par10, Par11, Par12, Par13, Par14, Par15, Par16, Par17, Par18, NumHoles')
     .eq('CourseID', courseId)
     .single();
 
@@ -79,28 +79,39 @@ export const fetchCoursePar = async (courseId: string): Promise<Record<number, n
   }
 
   const course = data as Courses
-  const holePars: Record<number, number | null> = {
-    1: course.Par1,
-    2: course.Par2,
-    3: course.Par3,
-    4: course.Par4,
-    5: course.Par5,
-    6: course.Par6,
-    7: course.Par7,
-    8: course.Par8,
-    9: course.Par9,
-    10: course.Par10,
-    11: course.Par11,
-    12: course.Par12,
-    13: course.Par13,
-    14: course.Par14,
-    15: course.Par15,
-    16: course.Par16,
-    17: course.Par17,
-    18: course.Par18,
+  let holePars: Record<number, number | null> = {};
+
+  for (let i = 1; i <= course.NumHoles; i++) {
+    const rawValue = course[`Par${i}` as keyof typeof course];
+  
+    let parsed: number | null = null;
+  
+    if (rawValue !== null && rawValue !== undefined) {
+      const num = Number(rawValue);
+      parsed = isNaN(num) ? null : num;
+    }
+  
+    holePars[i] = parsed;
+  }
+  return holePars
   };
 
-  return holePars
+// Fetch course par values for a particular course
+export const fetchCourseNumHoles = async (courseId: string): Promise<number> => {
+  const { data, error } = await supabase
+    .from('courses')
+    .select('NumHoles')
+    .eq('CourseID', courseId)
+    .single();
+
+  if (error) {
+    console.error('Error fetching course par:', error);
+    return -1;
+  }
+
+  const course = data as Courses
+
+  return course.NumHoles
 };
 
 // Function to fetch players for each round

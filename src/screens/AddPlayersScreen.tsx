@@ -9,7 +9,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { supabase } from '../supabase/supabaseClient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { fetchCoursePar } from '../utils/scoresUtils';
+import { fetchCourseNumHoles, fetchCoursePar } from '../utils/scoresUtils';
 
 type ProfileStackParamList = {
   AddPlayers: { ClubID: number; CourseID: number };
@@ -40,6 +40,7 @@ const AddPlayersScreen = () => {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [selectedPlayers, setSelectedPlayers] = useState<Players[]>([]);
   const [coursePars, setCoursePars] = useState<Record<number, number | null>>([]);
+  const [numHoles, setNumHoles] = useState<number>(0);
   const [loading, setLoading] = useState(false);
   const [isDropdownVisible, setDropdownVisible] = useState(false);
 
@@ -56,6 +57,8 @@ const AddPlayersScreen = () => {
     const fetchPar = async () => {
       let parMap: Record<number, number | null> = []
       parMap = await fetchCoursePar(CourseID.toString());
+      const holeCount = Object.keys(parMap).length;
+      setNumHoles(holeCount)
       setCoursePars(parMap)
     }
 
@@ -151,7 +154,7 @@ const AddPlayersScreen = () => {
       }
 
       const scoresToInsert = selectedPlayers.flatMap((player) =>
-        Array.from({ length: 18 }, (_, i) => i + 1)
+        Array.from({ length: numHoles }, (_, i) => i + 1)
           .map((hole) => ({
             round_id: roundData.id,
             player: player.id,

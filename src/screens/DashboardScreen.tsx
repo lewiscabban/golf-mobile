@@ -25,18 +25,15 @@ const DashboardScreen = () => {
   const [userId, setUserId] = useState<string | null>(null);
   const [rounds, setRounds] = useState<Round[]>([]);
   const [scoresMap, setScoresMap] = useState<Record<number, ScoresRow[]>>({});
-  const [holesPlayedMap, setHolesPlayedMap] = useState<Record<number, number>>({});
   const [totalParMap, setTotalParMap] = useState<Record<number, number>>({});
   const [courseNames, setCourseNames] = useState<Record<string, string>>({});
   const [courseHoles, setCourseHoles] = useState<Record<string, number>>({});
   const [clubNames, setClubNames] = useState<Record<string, string>>({});
   const [courseClubMap, setCourseClubMap] = useState<Record<string, string>>({});
   const [playersMap, setPlayersMap] = useState<Record<number, ProfilesRow[]>>({});
-  const [parMap, setParMap] = useState<Record<number, Record<number, number | null>>>({});
   const [loading, setLoading] = useState(true);
   const [moreLoading, setMoreLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [itemsPerPage, setItemsPerPage] = useState(INITIAL_ITEMS);
 
@@ -386,9 +383,6 @@ const DashboardScreen = () => {
       17: course.Par17,
       18: course.Par18,
     };
-    let newParMap = parMap
-    newParMap[roundId] = holePars
-    setParMap(newParMap)
 
     const totalPar = scores.reduce((total, score) => {
       if (score.score != null) {

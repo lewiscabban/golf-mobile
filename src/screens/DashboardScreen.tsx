@@ -288,7 +288,9 @@ const DashboardScreen = () => {
       player_scores = scores.filter(score => score.player === player.id)
     }
     let scoreThroughHolesPlayed = player_scores.filter(score => score.score !== null);
-    let parThroughHolesPlayed = scoreThroughHolesPlayed.reduce((total, score) => total + (parMap[roundId][score.hole] || 0), 0)
+    let scoreThroughHolesPlayedAndParSet = scoreThroughHolesPlayed.filter(score => score.par !== null);
+    let parThroughHolesPlayed = scoreThroughHolesPlayedAndParSet.reduce((total, score) => total + (score.par || 0), 0)
+    console.log(parThroughHolesPlayed)
     return parThroughHolesPlayed;
   };
 
@@ -456,7 +458,7 @@ const DashboardScreen = () => {
           const score = (totalScore - (parThroughHolesPlayed || 0))
           const holesPlayed = calculateHolesPlayed(scoresMap[item.id], item.id, player)
           let grossScore = score < 1 ? `${score}` : `+${score}`;
-          if (totalParMap[item.id] == 0) {
+          if (parThroughHolesPlayed == 0) {
             grossScore = "N/A";
             totalPar = "N/A";
           }

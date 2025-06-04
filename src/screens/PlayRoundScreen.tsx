@@ -122,16 +122,17 @@ const PlayRoundScreen: React.FC = () => {
           "postgres_changes",
           { event: "UPDATE", schema: "public", table: "scores", filter: `round_id=eq.${RoundID}` },
           (payload) => {
-            console.log("Received score update:", payload);
-            console.log(playerScores)
             let newPlayerScores = [...playerScores]
+            let newParValues = parValues
             for (let i = 0; i < newPlayerScores.length; i++) {
               if (newPlayerScores[i].player_id == payload.new.player) {
                 console.log("received update from player: ", newPlayerScores[i].player_id)
                 newPlayerScores[i].scores[payload.new.hole] = payload.new.score
+                newParValues[payload.new.hole] = payload.new.par
               }
             }
             setPlayerScores(newPlayerScores)
+            setParValues(newParValues)
           }
         )
         .subscribe();
@@ -189,12 +190,15 @@ const PlayRoundScreen: React.FC = () => {
           { event: "UPDATE", schema: "public", table: "scores", filter: `round_id=eq.${RoundID}` },
           (payload) => {
             let newPlayerScores = [...playerScores]
+            let newParValues = parValues
             for (let i = 0; i < newPlayerScores.length; i++) {
               if (newPlayerScores[i].player_id == payload.new.player) {
                 newPlayerScores[i].scores[payload.new.hole] = payload.new.score
+                newParValues[payload.new.hole-1] = payload.new.par
               }
             }
             setPlayerScores(newPlayerScores)
+            setParValues(newParValues)
           }
         )
         .subscribe();
@@ -371,15 +375,13 @@ const PlayRoundScreen: React.FC = () => {
           </View>
           <View style={styles.headerRow}>
             {parValues.map((par, index) => (
-              <View>
-                <TouchableOpacity
-                  key={index}
-                  style={styles.scoreCell}
-                  onPress={() => handleOpenParModal(index+1)}
-                >
-                  <Text key={index+1} style={styles.headerCell}>{par}</Text>
-                </TouchableOpacity>
-              </View>
+              <TouchableOpacity
+                key={index}
+                style={styles.scoreCell}
+                onPress={() => handleOpenParModal(index+1)}
+              >
+                <Text key={index+1} style={styles.headerCell}>{par}</Text>
+              </TouchableOpacity>
             ))}
           </View>
           {playerScores.map((player, index) => (

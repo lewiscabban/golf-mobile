@@ -1,7 +1,7 @@
 import React, { Dispatch, SetStateAction, useEffect, useState } from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
-import { supabase } from '../supabase/supabaseClient';
+import { supabase } from './supabaseClient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
 type Clubs = {

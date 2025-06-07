@@ -29,7 +29,7 @@ const LoginScreen = () => {
 
   // Refs for input fields
   const emailRef = React.useRef<TextInput>(null);
-  const passwordRef = React.useRef<TextInput>(null);
+  const passwordRef = React.useRef<TextInput | null>(null);
   const scrollRef = React.useRef<ScrollView>(null);
 
   const handleLogin = async () => {
@@ -86,7 +86,7 @@ const LoginScreen = () => {
   };
 
   // Function to scroll to the next input
-  const scrollToInput = (ref: React.RefObject<TextInput>) => {
+  const scrollToInput = (ref: React.RefObject<TextInput | null>) => {
     const nodeHandle = findNodeHandle(ref.current);
     const scrollHandle = findNodeHandle(scrollRef.current);
 
@@ -118,7 +118,7 @@ const LoginScreen = () => {
             <View style={styles.card}>
               <Text style={styles.title}>Sign in to your account</Text>
 
-              <TouchableOpacity style={styles.authButton}>
+              {/* <TouchableOpacity style={styles.authButton}>
                 <FontAwesome name="google" size={20} color="#EA4335" />
                 <Text style={styles.authText}>Sign in with Google</Text>
               </TouchableOpacity>
@@ -128,7 +128,7 @@ const LoginScreen = () => {
                 <Text style={styles.authText}>Sign in with Apple</Text>
               </TouchableOpacity>
 
-              <Text style={styles.orText}>Or continue with Email</Text>
+              <Text style={styles.orText}>Or continue with Email</Text> */}
 
               <TextInput
                 ref={emailRef}
@@ -143,8 +143,10 @@ const LoginScreen = () => {
                 autoCapitalize="none"
                 returnKeyType="next"
                 onSubmitEditing={() => {
-                  scrollToInput(passwordRef)
-                  passwordRef.current?.focus()
+                  if (passwordRef != null && passwordRef.current != null) {
+                    scrollToInput(passwordRef)
+                    passwordRef.current.focus()
+                  }
                 }}
               />
               {emailError && <Text style={styles.errorText}>Please enter your email</Text>}

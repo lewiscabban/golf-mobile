@@ -1,7 +1,9 @@
 {
+  "name": "pocketcaddie",
+  "displayName": "Pocket Caddie",
   "expo": {
-    "name": "expo-user-management",
-    "slug": "expo-user-management",
+    "name": "Pocket Caddie",
+    "slug": "pocket-caddie",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",

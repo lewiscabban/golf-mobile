@@ -113,7 +113,7 @@ const SignupScreen = () => {
           <View style={styles.container}>
             <View style={styles.card}>
               <Text style={styles.title}>Create an Account</Text>
-              <TouchableOpacity style={styles.authButton}>
+              {/* <TouchableOpacity style={styles.authButton}>
                 <FontAwesome name="google" size={20} color="#EA4335" />
                 <Text style={styles.authText}>Sign up with Google</Text>
               </TouchableOpacity>
@@ -121,7 +121,7 @@ const SignupScreen = () => {
                 <FontAwesome name="apple" size={20} color="#000" />
                 <Text style={styles.authText}>Sign up with Apple</Text>
               </TouchableOpacity>
-              <Text style={styles.orText}>Or continue with Email</Text>
+              <Text style={styles.orText}>Or continue with Email</Text> */}
 
               <TextInput
                 ref={firstNameRef}

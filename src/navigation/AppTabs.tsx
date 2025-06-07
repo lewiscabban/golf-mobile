@@ -57,7 +57,21 @@ const DashboardStackScreen = () => {
         <DashboardStack.Screen
           name="PlayRound"
           component={PlayRoundScreen}
-          
+          options={({ navigation }) => ({
+            title: 'Play Round',
+            headerLeft: () => (
+              <Ionicons
+                name="arrow-back"
+                size={24}
+                color="#000"
+                style={{ marginLeft: 10 }}
+                onPress={() => navigation.reset({
+                  index: 0,
+                  routes: [{ name: 'Dashboard' }],
+                })}
+              />
+            ),
+          })}
         />
       </DashboardStack.Navigator>
     );
@@ -109,6 +123,15 @@ const AppTabs = () => {
         name="PlayStack"
         component={PlayStackScreen}
         options={{ headerShown: false, title: 'Play' }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            e.preventDefault();
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'PlayStack' }],
+            });
+          },
+        })}
       />
       <Tab.Screen
         name="Settings"

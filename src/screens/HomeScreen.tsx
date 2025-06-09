@@ -14,7 +14,7 @@ const HomeScreen = () => {
   return (
     <View style={styles.container}>
       <View style={styles.titleContainer}>
-        <Text style={styles.title}>Welcome to Golf Score Card</Text>
+        <Text style={styles.title}>Welcome to Pocket Caddie</Text>
       </View>
 
       <View style={styles.buttonContainer}>
@@ -67,12 +67,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loginButton: {
-    backgroundColor: '#211071',
+    backgroundColor: '#4CAF50',
   },
   signupButton: {
     backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: '#211071',
+    borderColor: '#4CAF50',
   },
   buttonText: {
     fontSize: 16,
@@ -82,7 +82,7 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   signupText: {
-    color: '#211071',
+    color: '#4CAF50',
   },
 });
 

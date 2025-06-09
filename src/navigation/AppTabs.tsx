@@ -11,6 +11,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import ResultsScreen from '../screens/ResultsScreen';
 import FriendsScreen from '../screens/FriendsScreen';
 import { StackNavigationProp } from '@react-navigation/stack';
+import { HeaderTitle } from '@react-navigation/elements';
 
 const Tab = createBottomTabNavigator();
 const PlayStack = createNativeStackNavigator();
@@ -52,7 +53,7 @@ const DashboardStackScreen = () => {
           contentStyle:{ backgroundColor: '#fff'}
         }}
       >
-        <DashboardStack.Screen name="Dashboard" component={DashboardScreen} />
+        <DashboardStack.Screen name="Dashboard" component={DashboardScreen} options={() => ({title: "Pocket Caddie"})} />
         <DashboardStack.Screen name="Friends" component={FriendsScreen} />
         <DashboardStack.Screen
           name="PlayRound"

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Alert, StyleSheet, Modal, Pressable } from 'react-native';
 import { useRoute, RouteProp, useNavigation, NavigationProp } from '@react-navigation/native';
 import { supabase } from '../supabase/supabaseClient';
@@ -47,6 +47,16 @@ const PlayRoundScreen: React.FC = () => {
   const [selectedPar, setSelectedPar] = useState<number | null>(null);
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
   const [optionsModalVisible, setOptionsModalVisible] = useState<boolean>(false);
+  const playerScoresRef = useRef(playerScores);
+  const parValuesRef = useRef(parValues);
+
+  useEffect(() => {
+    playerScoresRef.current = playerScores;
+  }, [playerScores]);
+  
+  useEffect(() => {
+    parValuesRef.current = parValues;
+  }, [parValues]);  
 
   useEffect(() => {
     navigation.setOptions({
@@ -115,42 +125,12 @@ const PlayRoundScreen: React.FC = () => {
           .eq('round_id', RoundID)
           .order('hole', { ascending: true }) as unknown as { data: Score[]; error: any };
 
-        console.log("setting up subscription!")
-        const subscription = supabase
-        .channel(`scores-updates-${RoundID}`) // Unique channel for this round
-        .on(
-          "postgres_changes",
-          { event: "UPDATE", schema: "public", table: "scores", filter: `round_id=eq.${RoundID}` },
-          (payload) => {
-            let newPlayerScores = [...playerScores]
-            let newParValues = parValues
-            for (let i = 0; i < newPlayerScores.length; i++) {
-              if (newPlayerScores[i].player_id == payload.new.player) {
-                console.log("received update from player: ", newPlayerScores[i].player_id)
-                newPlayerScores[i].scores[payload.new.hole] = payload.new.score
-                newParValues[payload.new.hole] = payload.new.par
-              }
-            }
-            setPlayerScores(newPlayerScores)
-            setParValues(newParValues)
-          }
-        )
-        .subscribe();
-        console.log("set up subscription!")
-
-        
-        const { data: roundData, error: roundError } = await supabase
-          .from('rounds')
-          .select('course_id::text')
-          .eq('id', RoundID)
-    
         if (error) throw error;
-        if (roundError) throw roundError;
-    
+  
         const scoresByPlayer: { [key: string]: PlayerScores } = {};
         const holeSet = new Set<number>();
-        let parMap: Record<number, number | null> = []
-    
+        let parMap: Record<number, number | null> = [];
+  
         scoresData.forEach((score) => {
           const playerId = score.player;
           const playerName = score.profiles.username;
@@ -164,47 +144,48 @@ const PlayRoundScreen: React.FC = () => {
           parMap[score.hole] = score.par;
           holeSet.add(score.hole);
         });
-    
+  
         const sortedHoles = [...holeSet].sort((a, b) => a - b);
         setHoles(sortedHoles);
         setParValues(sortedHoles.map((hole) => parMap[hole] || 'N/A'));
         setPlayerScores(Object.values(scoresByPlayer));
+  
       } catch (err) {
-        console.error('Fetch Scores Error:', err);  // Log error for debugging
-        Alert.alert('Error', `Something went wrong. Please try again.`);
+        console.error('Fetch Scores Error:', err);
+        Alert.alert('Error', 'Something went wrong. Please try again.');
       } finally {
-        setLoading(false);
-      }
-    };
-    
 
-    fetchScores();
-  }, [RoundID]);
-
-  useEffect(() => {
-    const fetchScores = async () => {
         const subscription = supabase
-        .channel(`scores-updates-${RoundID}`)
+        .channel(`scores-updates-${RoundID}`) // Unique channel for this round
         .on(
           "postgres_changes",
           { event: "UPDATE", schema: "public", table: "scores", filter: `round_id=eq.${RoundID}` },
           (payload) => {
-            let newPlayerScores = [...playerScores]
-            let newParValues = parValues
+            let newPlayerScores = playerScoresRef.current.map(player => ({
+              ...player,
+              scores: { ...player.scores },
+              pars: { ...player.pars },
+            }));
+            let newParValues = [...parValuesRef.current];
+            
             for (let i = 0; i < newPlayerScores.length; i++) {
-              if (newPlayerScores[i].player_id == payload.new.player) {
-                newPlayerScores[i].scores[payload.new.hole] = payload.new.score
-                newParValues[payload.new.hole-1] = payload.new.par
+              if (newPlayerScores[i].player_id === payload.new.player) {
+                newPlayerScores[i].scores[payload.new.hole] = payload.new.score;
+                newParValues[payload.new.hole - 1] = payload.new.par;
               }
             }
-            setPlayerScores(newPlayerScores)
-            setParValues(newParValues)
+            
+            setPlayerScores(newPlayerScores);
+            setParValues(newParValues);
           }
         )
         .subscribe();
+        setLoading(false);
       }
+    };
+  
     fetchScores();
-  }, [playerScores]);
+  }, [RoundID]);
 
   const handleOpenHoleModal = (hole: number, player_id: string) => {
     setSelectedHole({ hole, player_id });

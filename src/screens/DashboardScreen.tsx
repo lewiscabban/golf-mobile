@@ -31,6 +31,7 @@ const DashboardScreen = () => {
   const [clubNames, setClubNames] = useState<Record<string, string>>({});
   const [courseClubMap, setCourseClubMap] = useState<Record<string, string>>({});
   const [playersMap, setPlayersMap] = useState<Record<number, ProfilesRow[]>>({});
+  const [loading, setLoading] = useState(true);
   const [moreLoading, setMoreLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [hasMore, setHasMore] = useState(true);
@@ -38,6 +39,9 @@ const DashboardScreen = () => {
 
   const fetchRounds = async () => {
     console.log("start")
+
+    setLoading(true); // Start loading
+    try {
     const { data: friendsData, error: friendsError } = await supabase
           .from('friendships')
           .select('sender_id, receiver_id')
@@ -91,9 +95,11 @@ const DashboardScreen = () => {
         } else {
             console.error('No rounds found for friends or user.');
         }
-
-    setMoreLoading(false);
-    setRefreshing(false);
+    } finally {
+      setLoading(false); // Done loading
+      setMoreLoading(false);
+      setRefreshing(false);
+    }
   };
 
   const fetchMoreRounds = async () => {
@@ -343,51 +349,60 @@ const DashboardScreen = () => {
   };
 
   const fetchPlayers = async (rounds: Round[]) => {
-    const playersMap: Record<number, ProfilesRow[]> = {};
-
-    for (const round of rounds) {
-      const { data, error } = await supabase
-        .from('scores')
-        .select('player')
-        .eq('round_id', round.id);
-
-      if (error) {
-        console.error('Error fetching players:', error);
-        continue;
-      }
-
-      const playerIds: string[] = data?.map((score) => score.player);
-      if (playerIds?.length) {
-        const { data: profilesData, error: profilesError } = await supabase
-          .from('profiles')
-          .select('*')
-          .in('id', playerIds);
-
-        if (profilesError) {
-          console.error('Error fetching profiles:', profilesError);
-          continue;
-        }
-
-        playersMap[round.id] = profilesData || [];
-      }
+    const roundIds = rounds.map(round => round.id);
+  
+    // Fetch all scores for the given round IDs
+    const { data: scoresData, error: scoresError } = await supabase
+      .from('scores')
+      .select('round_id, player')
+      .in('round_id', roundIds);
+  
+    if (scoresError) {
+      console.error('Error fetching scores:', scoresError);
+      return;
     }
-
+  
+    // Build a map from round_id -> Set of player IDs
+    const roundToPlayerIds: Record<number, Set<string>> = {};
+    const allPlayerIdsSet = new Set<string>();
+  
+    scoresData?.forEach(({ round_id, player }) => {
+      if (!roundToPlayerIds[round_id]) roundToPlayerIds[round_id] = new Set();
+      roundToPlayerIds[round_id].add(player);
+      allPlayerIdsSet.add(player);
+    });
+  
+    const allPlayerIds = Array.from(allPlayerIdsSet);
+  
+    // Fetch all player profiles in one call
+    const { data: profilesData, error: profilesError } = await supabase
+      .from('profiles')
+      .select('*')
+      .in('id', allPlayerIds);
+  
+    if (profilesError) {
+      console.error('Error fetching profiles:', profilesError);
+      return;
+    }
+  
+    // Map player ID to profile
+    const profileMap: Record<string, ProfilesRow> = {};
+    profilesData?.forEach(profile => {
+      profileMap[profile.id] = profile;
+    });
+  
+    // Build final playersMap: round_id -> [ProfilesRow]
+    const playersMap: Record<number, ProfilesRow[]> = {};
+    for (const roundId of roundIds) {
+      const playerIds = Array.from(roundToPlayerIds[roundId] || []);
+      playersMap[roundId] = playerIds.map(id => profileMap[id]).filter(Boolean);
+    }
+  
     setPlayersMap(playersMap);
   };
+  
 
   const fetchCoursePar = async (course: Courses, scores: ScoresRow[], round_id: number): Promise<number> => {
-    // const { data, error } = await supabase
-    //   .from('courses')
-    //   .select('Par1, Par2, Par3, Par4, Par5, Par6, Par7, Par8, Par9, Par10, Par11, Par12, Par13, Par14, Par15, Par16, Par17, Par18')
-    //   .eq('CourseID', courseId)
-    //   .single();
-
-    // if (error) {
-    //   console.error('Error fetching course par:', error);
-    //   return 0;
-    // }
-
-    // const course = data as Courses;
     const holePars: Record<number, number | null> = {
       1: course.Par1,
       2: course.Par2,
@@ -517,26 +532,28 @@ const DashboardScreen = () => {
 
   return (
     <View style={styles.container}>
-      <View style={{flex: 1}}>
-        <FlatList
-          data={rounds}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={renderRound}
-          contentContainerStyle={styles.list}
-          onRefresh={handleRefresh}
-          refreshing={refreshing}
-          showsVerticalScrollIndicator={false}
-          ListFooterComponent={() =>{
-            return (
+      <View style={{ flex: 1 }}>
+        {loading ? (
+          <ActivityIndicator size="large" style={{ marginTop: 20 }} />
+        ) : (
+          <FlatList
+            data={rounds}
+            keyExtractor={(item) => item.id.toString()}
+            renderItem={renderRound}
+            contentContainerStyle={styles.list}
+            onRefresh={handleRefresh}
+            refreshing={refreshing}
+            showsVerticalScrollIndicator={false}
+            ListFooterComponent={() => (
               <View>
                 {hasMore && !moreLoading && (
                   <Button title="Load More" onPress={fetchMoreRounds} />
                 )}
                 {moreLoading && <ActivityIndicator size="large" />}
               </View>
-            )
-          }}
-        />
+            )}
+          />
+        )}
       </View>
     </View>
   );

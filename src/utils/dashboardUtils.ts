@@ -29,8 +29,6 @@ export const fetchRounds = async (
   setClubNames: (map: Record<string, string>) => void,
   setPlayersMap: (map: Record<number, ProfilesRow[]>) => void,
 ) => {
-  console.log("start")
-
   setLoading(true); // Start loading
   try {
     const { data: friendsData, error: friendsError } = await supabase
@@ -38,7 +36,6 @@ export const fetchRounds = async (
       .select('sender_id, receiver_id')
       .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
       .eq('status', 'accepted');
-    console.log("done")
 
     if (friendsError) {
       console.error('Error fetching friends:', friendsError);
@@ -59,7 +56,6 @@ export const fetchRounds = async (
       console.error('Error fetching rounds for friends:', friendRoundsError);
       return;
     }
-    console.log("1")
     const allRoundIds = allRoundsData?.map(score => score.round_id) || [];
 
     // Now fetch the rounds based on the combined round IDs
@@ -70,19 +66,14 @@ export const fetchRounds = async (
         .order("created_at", { ascending: false })
         .in('id', allRoundIds)
         .limit(itemsPerPage);
-      console.log("2")
       if (finalRoundsError) {
         console.error('Error fetching final rounds:', finalRoundsError);
       } else {
         setRounds(finalRoundsData || []);
-        console.log("3")
         await fetchAllScoresAndPars(setScoresMap, setTotalParMap, finalRoundsData || []);
-        console.log("4")
         await fetchCourseAndClubNames(setCourseNames, setCourseHoles, setCourseClubMap, setClubNames, finalRoundsData || []);
-        console.log("5")
         await fetchPlayers(setPlayersMap, finalRoundsData || []);
       }
-      console.log("6")
     } else {
       console.error('No rounds found for friends or user.');
     }
@@ -256,13 +247,11 @@ export const fetchCourseAndClubNames = async (
 };
 
 export const fetchScores = async (roundId: number): Promise<ScoresRow[]> => {
-  console.log("score 1")
   const { data, error } = await supabase
     .from('scores')
     .select('*')
     .eq('round_id', roundId)
     .order('hole', { ascending: true });
-  console.log("score 2")
   if (error) {
     console.error('Error fetching scores:', error);
     return [];
@@ -342,7 +331,6 @@ export const fetchAllScoresAndPars = async (
     .in('round_id', roundIds)
     .order('hole', { ascending: true });
 
-  console.log("scores: ", data?.length)
   if (data) {
     for (const score of data) {
       newscores[score.round_id].push(score)

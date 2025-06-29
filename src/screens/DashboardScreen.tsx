@@ -4,21 +4,14 @@ import { supabase } from '../supabase/supabaseClient';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { ScoresRow, ProfilesRow } from '../types/supabase';
 import { Courses } from "../utils/scoresUtils"
+import { fetchRounds, Round, INITIAL_ITEMS, calculateTotalScore, calculateParThroughHolesPlayed, calculateHolesPlayed, fetchMoreRounds } from "../utils/dashboardUtils"
 import Ionicons from 'react-native-vector-icons/Ionicons'; // Import Ionicons for the friends icon
-
-type Round = {
-  course_id: string
-  created_at: string
-  id: number
-}
 
 type DashboardStackParamList = {
   ProfileStack: { screen: string; params: { RoundID: number } };
   Friends: undefined; // Define the FriendRequests screen
   PlayRound: { RoundID: number }; // Define the FriendRequests screen
 };
-
-const INITIAL_ITEMS = 20;
 
 const DashboardScreen = () => {
   const navigation = useNavigation<NavigationProp<DashboardStackParamList>>();
@@ -32,374 +25,28 @@ const DashboardScreen = () => {
   const [courseClubMap, setCourseClubMap] = useState<Record<string, string>>({});
   const [playersMap, setPlayersMap] = useState<Record<number, ProfilesRow[]>>({});
   const [loading, setLoading] = useState(true);
-  const [moreLoading, setMoreLoading] = useState(true);
+  const [moreLoading, setMoreLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [itemsPerPage, setItemsPerPage] = useState(INITIAL_ITEMS);
 
-  const fetchRounds = async () => {
-    const { data: friendsData, error: friendsError } = await supabase
-          .from('friendships')
-          .select('sender_id, receiver_id')
-          .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
-          .eq('status', 'accepted');
-  
-        if (friendsError) {
-            console.error('Error fetching friends:', friendsError);
-            return;
-        }
-  
-        // Extract friend IDs
-        const friendIds = friendsData?.flatMap(friend => 
-            friend.sender_id === userId ? friend.receiver_id : friend.sender_id
-        ) || [];
-  
-        if (friendIds.length > 0 || userId) {
-        // Fetch round IDs for friends
-        const { data: friendRoundsData, error: friendRoundsError } = await supabase
-            .from('scores')
-            .select('round_id')
-            .in('player', friendIds);
-  
-        if (friendRoundsError) {
-            console.error('Error fetching rounds for friends:', friendRoundsError);
-            return;
-        }
-  
-        const friendRoundIds = friendRoundsData?.map(score => score.round_id) || [];
-  
-        // Fetch round IDs for the current user
-        const { data: userRoundsData, error: userRoundsError } = await supabase
-            .from('scores')
-            .select('round_id')
-            .eq('player', userId);
-  
-        if (userRoundsError) {
-            console.error('Error fetching rounds for user:', userRoundsError);
-            return;
-        }
-  
-        const userRoundIds = userRoundsData?.map(score => score.round_id) || [];
-  
-        // Combine both friend and user round IDs
-        const allRoundIds = Array.from(new Set([...friendRoundIds, ...userRoundIds]));
-  
-        // Now fetch the rounds based on the combined round IDs
-        if (allRoundIds.length > 0) {
-            const { data: finalRoundsData, error: finalRoundsError } = await supabase
-                .from('rounds')
-                .select('course_id::text, created_at, id')
-                .order("created_at", { ascending: false })
-                .in('id', allRoundIds)
-                .limit(itemsPerPage);
-  
-            if (finalRoundsError) {
-                console.error('Error fetching final rounds:', finalRoundsError);
-            } else {
-              setRounds(finalRoundsData || []);
-              await fetchAllScoresAndPars(finalRoundsData || []);
-              await fetchCourseAndClubNames(finalRoundsData || []);
-              await fetchPlayers(finalRoundsData || []);
-            }
-          } else {
-              console.log('No rounds found for friends or user.');
-          }
-        } else {
-            console.log('No friends found.');
-        }
-
-    setLoading(false);
-    setMoreLoading(false);
-    setRefreshing(false);
-  };
-
-  const fetchMoreRounds = async () => {
-    if (!hasMore) return;
-    setMoreLoading(true)
-    const nextItemsPerPage = itemsPerPage + INITIAL_ITEMS
-
-    const { data: friendsData, error: friendsError } = await supabase
-          .from('friendships')
-          .select('sender_id, receiver_id')
-          .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
-          .eq('status', 'accepted');
-  
-        if (friendsError) {
-            console.error('Error fetching friends:', friendsError);
-            return;
-        }
-  
-        // Extract friend IDs
-        const friendIds = friendsData?.flatMap(friend => 
-            friend.sender_id === userId ? friend.receiver_id : friend.sender_id
-        ) || [];
-  
-        if (friendIds.length > 0 || userId) {
-        // Fetch round IDs for friends
-        const { data: friendRoundsData, error: friendRoundsError } = await supabase
-            .from('scores')
-            .select('round_id')
-            .in('player', friendIds);
-  
-        if (friendRoundsError) {
-            console.error('Error fetching rounds for friends:', friendRoundsError);
-            return;
-        }
-  
-        const friendRoundIds = friendRoundsData?.map(score => score.round_id) || [];
-  
-        // Fetch round IDs for the current user
-        const { data: userRoundsData, error: userRoundsError } = await supabase
-            .from('scores')
-            .select('round_id')
-            .eq('player', userId);
-  
-        if (userRoundsError) {
-            console.error('Error fetching rounds for user:', userRoundsError);
-            return;
-        }
-  
-        const userRoundIds = userRoundsData?.map(score => score.round_id) || [];
-  
-        // Combine both friend and user round IDs
-        const allRoundIds = Array.from(new Set([...friendRoundIds, ...userRoundIds]));
-  
-        // Now fetch the rounds based on the combined round IDs
-        if (allRoundIds.length > 0) {
-            const { data: finalRoundsData, error: finalRoundsError } = await supabase
-                .from('rounds')
-                .select('course_id::text, created_at, id')
-                .order("created_at", { ascending: false })
-                .in('id', allRoundIds)
-                .limit(nextItemsPerPage);
-  
-            if (finalRoundsError) {
-                console.error('Error fetching final rounds:', finalRoundsError);
-            } else {
-              setRounds(finalRoundsData || []);
-              await fetchAllScoresAndPars(finalRoundsData || []);
-              await fetchCourseAndClubNames(finalRoundsData || []);
-              await fetchPlayers(finalRoundsData || []); // Fetch players for each round
-              setItemsPerPage(nextItemsPerPage);
-
-              if (finalRoundsData.length < nextItemsPerPage) {
-                setHasMore(false);
-              }
-            }
-          } else {
-              console.log('No rounds found for friends or user.');
-          }
-        } else {
-            console.log('No friends found.');
-        }
-
-    setMoreLoading(false);
-    setRefreshing(false);
-  };
-
-  const fetchCourseAndClubNames = async (rounds: Round[]) => {
-    const courseIds = rounds.map((round) => round.course_id).filter((id) => id != null);
-
-    if (courseIds.length > 0) {
-      const { data: coursesData, error: coursesError } = await supabase
-        .from('courses')
-        .select('CourseID::text, CourseName, ClubID::text, NumHoles')
-        .in('CourseID', courseIds);
-
-      if (coursesError) {
-        console.error('Error fetching course names:', coursesError);
-        Alert.alert('Error', 'Failed to fetch course names.');
-        return;
-      }
-
-      const courseNameMap: Record<string, string> = {};
-      const courseHoleMap: Record<string, number> = {};
-      const clubIdSet = new Set<string>();
-      const courseClubMap: Record<string, string> = {};
-
-      (coursesData as Partial<Courses>[]).forEach((course) => {
-        console.log(course)
-        if (course.CourseID && course.CourseName) {
-          courseNameMap[course.CourseID] = course.CourseName;
-          courseHoleMap[course.CourseID] = course.NumHoles || 0;
-          if (course.ClubID) {
-            courseClubMap[course.CourseID] = course.ClubID;
-            clubIdSet.add(course.ClubID);
-          }
-        }
-      });
-      console.log(courseHoleMap)
-      setCourseNames(courseNameMap);
-      setCourseHoles(courseHoleMap);
-      setCourseClubMap(courseClubMap);
-
-      if (clubIdSet.size > 0) {
-        const { data: clubsData, error: clubsError } = await supabase
-          .from('clubs')
-          .select('ClubID::text, ClubName')
-          .in('ClubID', Array.from(clubIdSet));
-
-        if (clubsError) {
-          console.error('Error fetching club names:', clubsError);
-          Alert.alert('Error', 'Failed to fetch club names.');
-          return;
-        }
-
-        const clubNameMap: Record<string, string> = {};
-        clubsData?.forEach((club) => {
-          clubNameMap[club.ClubID] = club.ClubName;
-        });
-
-        setClubNames(clubNameMap);
-      }
-    }
-  };
-
-  const fetchScores = async (roundId: number): Promise<ScoresRow[]> => {
-    const { data, error } = await supabase
-      .from('scores')
-      .select('*')
-      .eq('round_id', roundId)
-      .order('hole', { ascending: true });
-
-    if (error) {
-      console.error('Error fetching scores:', error);
-      return [];
-    }
-
-    return data as ScoresRow[];
-  };
-
-  const calculateTotalScore = (scores: ScoresRow[], player: ProfilesRow | null = null): number => {
-    let player_scores: ScoresRow[] = []
-    if (player) {
-      player_scores = scores.filter(score => score.player === player.id)
-    }
-    const totalScore = player_scores.reduce((total, score) => total + (score.score || 0), 0);
-    return totalScore
-  };
-
-  const calculateParThroughHolesPlayed = (scores: ScoresRow[], roundId: number, player: ProfilesRow | null = null): number => {
-    let player_scores: ScoresRow[] = []
-    if (player) {
-      player_scores = scores.filter(score => score.player === player.id)
-    }
-    let scoreThroughHolesPlayed = player_scores.filter(score => score.score !== null);
-    let scoreThroughHolesPlayedAndParSet = scoreThroughHolesPlayed.filter(score => score.par !== null);
-    let parThroughHolesPlayed = scoreThroughHolesPlayedAndParSet.reduce((total, score) => total + (score.par || 0), 0)
-    console.log(parThroughHolesPlayed)
-    return parThroughHolesPlayed;
-  };
-
-  const calculateHolesPlayed = (scores: ScoresRow[], roundId: number, player: ProfilesRow | null = null): number => {
-    let player_scores: ScoresRow[] = []
-    if (player) {
-      player_scores = scores.filter(score => score.player === player.id)
-    }
-    let scoreThroughHolesPlayed = player_scores.filter(score => score.score !== null);
-    return scoreThroughHolesPlayed.length;
-  };
-
-  const fetchAllScoresAndPars = async (rounds: Round[]) => {
-    const scores: Record<number, ScoresRow[]> = {};
-    const pars: Record<number, number> = {};
-
-    for (const round of rounds) {
-      scores[round.id] = await fetchScores(round.id);
-
-      if (round.course_id) {
-        const coursePar = await fetchCoursePar(round.course_id, scores[round.id], round.id);
-        pars[round.id] = coursePar;
-      }
-    }
-
-    setScoresMap(scores);
-    setTotalParMap(pars);
-  };
-
-  const fetchPlayers = async (rounds: Round[]) => {
-    const playersMap: Record<number, ProfilesRow[]> = {};
-
-    for (const round of rounds) {
-      const { data, error } = await supabase
-        .from('scores')
-        .select('player')
-        .eq('round_id', round.id);
-
-      if (error) {
-        console.error('Error fetching players:', error);
-        continue;
-      }
-
-      const playerIds: string[] = data?.map((score) => score.player);
-      if (playerIds?.length) {
-        const { data: profilesData, error: profilesError } = await supabase
-          .from('profiles')
-          .select('*')
-          .in('id', playerIds);
-
-        if (profilesError) {
-          console.error('Error fetching profiles:', profilesError);
-          continue;
-        }
-
-        playersMap[round.id] = profilesData || [];
-      }
-    }
-
-    setPlayersMap(playersMap);
-  };
-
-  const fetchCoursePar = async (courseId: string, scores: ScoresRow[], roundId: number): Promise<number> => {
-    const { data, error } = await supabase
-      .from('courses')
-      .select('Par1, Par2, Par3, Par4, Par5, Par6, Par7, Par8, Par9, Par10, Par11, Par12, Par13, Par14, Par15, Par16, Par17, Par18')
-      .eq('CourseID', courseId)
-      .single();
-
-    if (error) {
-      console.error('Error fetching course par:', error);
-      return 0;
-    }
-
-    const course = data as Courses;
-    const holePars: Record<number, number | null> = {
-      1: course.Par1,
-      2: course.Par2,
-      3: course.Par3,
-      4: course.Par4,
-      5: course.Par5,
-      6: course.Par6,
-      7: course.Par7,
-      8: course.Par8,
-      9: course.Par9,
-      10: course.Par10,
-      11: course.Par11,
-      12: course.Par12,
-      13: course.Par13,
-      14: course.Par14,
-      15: course.Par15,
-      16: course.Par16,
-      17: course.Par17,
-      18: course.Par18,
-    };
-
-    const totalPar = scores.reduce((total, score) => {
-      if (score.score != null) {
-        let hole = holePars[score.hole]
-        if (hole != null) {
-          return total + hole
-        }
-      }
-      return total
-    }, 0);
-
-    return totalPar;
-  };
-
   useEffect(() => {
     if (userId) {
-      fetchRounds();
+      fetchRounds(
+        userId,
+        itemsPerPage,
+        setLoading,
+        setMoreLoading,
+        setRefreshing,
+        setRounds,
+        setScoresMap,
+        setTotalParMap,
+        setCourseNames,
+        setCourseHoles,
+        setCourseClubMap,
+        setClubNames,
+        setPlayersMap
+      );
     }
   }, [userId]);
 
@@ -417,7 +64,23 @@ const DashboardScreen = () => {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await fetchRounds();
+    if (userId) {
+      await fetchRounds(
+        userId,
+        itemsPerPage,
+        setLoading,
+        setMoreLoading,
+        setRefreshing,
+        setRounds,
+        setScoresMap,
+        setTotalParMap,
+        setCourseNames,
+        setCourseHoles,
+        setCourseClubMap,
+        setClubNames,
+        setPlayersMap
+      );
+    }
   };
 
   const renderRound = ({ item }: { item: Round }) => {
@@ -492,10 +155,10 @@ const DashboardScreen = () => {
 
   return (
     <View style={styles.container}>
-      {loading ? (
-        <ActivityIndicator size="large" color="#0000ff" />
-      ) : (
-        <View style={{flex: 1}}>
+      <View style={{ flex: 1 }}>
+        {loading ? (
+          <ActivityIndicator size="large" style={{ marginTop: 20 }} />
+        ) : (
           <FlatList
             data={rounds}
             keyExtractor={(item) => item.id.toString()}
@@ -504,19 +167,39 @@ const DashboardScreen = () => {
             onRefresh={handleRefresh}
             refreshing={refreshing}
             showsVerticalScrollIndicator={false}
-            ListFooterComponent={() =>{
-              return (
-                <View>
-                  {hasMore && !moreLoading && (
-                    <Button title="Load More" onPress={fetchMoreRounds} />
-                  )}
-                  {moreLoading && <ActivityIndicator size="large" />}
-                </View>
-              )
-            }}
+            ListFooterComponent={() => (
+              <View>
+                {hasMore && !moreLoading && (
+                  <Button
+                    title="Load More"
+                    onPress={() =>
+                      userId &&
+                      fetchMoreRounds(
+                        userId,
+                        itemsPerPage,
+                        hasMore,
+                        setMoreLoading,
+                        setRefreshing,
+                        setRounds,
+                        setScoresMap,
+                        setTotalParMap,
+                        setCourseNames,
+                        setCourseHoles,
+                        setCourseClubMap,
+                        setClubNames,
+                        setPlayersMap,
+                        setItemsPerPage,
+                        setHasMore
+                      )
+                    }
+                  />
+                )}
+                {moreLoading && <ActivityIndicator size="large" />}
+              </View>
+            )}
           />
-        </View>
-      )}
+        )}
+      </View>
     </View>
   );
 };

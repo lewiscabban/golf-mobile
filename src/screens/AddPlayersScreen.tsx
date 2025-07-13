@@ -43,6 +43,9 @@ const AddPlayersScreen = () => {
   const [numHoles, setNumHoles] = useState<number>(0);
   const [loading, setLoading] = useState(false);
   const [isDropdownVisible, setDropdownVisible] = useState(false);
+  const [showGuestInput, setShowGuestInput] = useState(false);
+  const [guestName, setGuestName] = useState('');
+
 
   useEffect(() => {
     const fetchUserId = async () => {
@@ -181,38 +184,81 @@ const AddPlayersScreen = () => {
     }
   };
 
+  const handleAddGuest = () => {
+    const trimmedName = guestName.trim();
+    if (!trimmedName) return;
+  
+    const guestId = Date.now(); // temporary unique ID
+    const newGuest = { id: guestId, username: trimmedName };
+  
+    setSelectedPlayers((prev) => [...prev, newGuest]);
+    setGuestName('');
+    setShowGuestInput(false);
+  };
+  
+
   return (
     <TouchableWithoutFeedback onPress={() => { setDropdownVisible(false); Keyboard.dismiss(); }}>
       <View style={styles.container}>
         <Text style={styles.title}>Add Players</Text>
-        <View style={styles.inputWrapper}>
-          <TextInput
+        {/* <View style={styles.inputWrapper}> */}
+          {/* <TextInput
             style={styles.input}
             placeholder="Search Friends"
             value={playerName}
             onChangeText={handleSearch}
             onFocus={() => setDropdownVisible(true)}
-          />
-          {isDropdownVisible && searchResults.length > 0 && (
-            <FlatList
-            data={searchResults}
-            keyExtractor={(item) => item.id.toString()}
-            style={styles.dropdownContainer}
-            renderItem={({ item }) => (
-              <View style={styles.addPlayerItemContainer}>
-                <TouchableOpacity onPress={() => addPlayer(item)} style={styles.addPlayerButton}>
-                  <View style={styles.addPlayerContent}>
-                    <Text style={styles.dropdownItem}>{item.username}</Text>
-                    <Icon name="add" size={24} color="#4CAF50" />
+          /> */}
+          <View style={styles.inputWrapper}>
+            <TextInput
+              style={styles.input}
+              placeholder="Search Friends"
+              value={playerName}
+              onChangeText={handleSearch}
+              onFocus={() => setDropdownVisible(true)}
+            />
+            {isDropdownVisible && searchResults.length > 0 && (
+              <FlatList
+                data={searchResults}
+                keyExtractor={(item) => item.id.toString()}
+                style={styles.dropdownContainer}
+                renderItem={({ item }) => (
+                  <View style={styles.addPlayerItemContainer}>
+                    <TouchableOpacity onPress={() => addPlayer(item)} style={styles.addPlayerButton}>
+                      <View style={styles.addPlayerContent}>
+                        <Text style={styles.dropdownItem}>{item.username}</Text>
+                        <Icon name="add" size={24} color="#4CAF50" />
+                      </View>
+                    </TouchableOpacity>
                   </View>
+                )}
+                keyboardShouldPersistTaps="handled"
+              />
+            )}
+
+            {/* Add Guest Toggle */}
+            <TouchableOpacity onPress={() => setShowGuestInput(true)} style={styles.addGuestButton}>
+              <Text style={styles.addGuestText}>+ Add Guest</Text>
+            </TouchableOpacity>
+
+            {showGuestInput && (
+              <View style={styles.guestInputContainer}>
+                <TextInput
+                  style={styles.guestInput}
+                  placeholder="Enter guest name"
+                  value={guestName}
+                  onChangeText={setGuestName}
+                  maxLength={40}
+                />
+                <TouchableOpacity onPress={handleAddGuest} style={styles.addGuestSubmitButton}>
+                  <Text style={styles.addGuestSubmitText}>Add</Text>
                 </TouchableOpacity>
               </View>
             )}
-            keyboardShouldPersistTaps="handled"
-          />          
-          
-          )}
-        </View>
+
+          </View>
+
+        {/* </View> */}
         <FlatList
           data={selectedPlayers}
           keyExtractor={(item) => item.id.toString()}
@@ -333,6 +379,41 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
+  addGuestButton: {
+    paddingVertical: 8,
+    alignItems: 'flex-start',
+    marginTop: 5,
+  },
+  addGuestText: {
+    fontSize: 16,
+    color: '#4CAF50',
+    fontWeight: 'bold',
+  },
+  guestInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
+    width: '100%',
+  },  
+  addGuestSubmitButton: {
+    marginLeft: 10,
+    backgroundColor: '#4CAF50',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 5,
+  },
+  addGuestSubmitText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  guestInput: {
+    flex: 1,
+    borderBottomWidth: 1,
+    borderColor: '#4CAF50',
+    paddingHorizontal: 10,
+    height: 50,
+    color: '#000000',
+  },  
 });
 
 export default AddPlayersScreen;

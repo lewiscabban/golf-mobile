@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, ActivityIndicator, Button } from 'react-native';
 import { supabase } from '../supabase/supabaseClient';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
-import { ScoresRow, ProfilesRow } from '../types/supabase';
+import { ScoresRow, ProfilesRow, GuestsRow } from '../types/supabase';
 import { Courses } from "../utils/scoresUtils"
 import { fetchRounds, Round, INITIAL_ITEMS, calculateTotalScore, calculateParThroughHolesPlayed, calculateHolesPlayed, fetchMoreRounds } from "../utils/dashboardUtils"
 import Ionicons from 'react-native-vector-icons/Ionicons'; // Import Ionicons for the friends icon
@@ -23,7 +23,7 @@ const DashboardScreen = () => {
   const [courseHoles, setCourseHoles] = useState<Record<string, number>>({});
   const [clubNames, setClubNames] = useState<Record<string, string>>({});
   const [courseClubMap, setCourseClubMap] = useState<Record<string, string>>({});
-  const [playersMap, setPlayersMap] = useState<Record<number, ProfilesRow[]>>({});
+  const [playersMap, setPlayersMap] = useState<Record<number, Array<ProfilesRow | GuestsRow>>>({});
   const [loading, setLoading] = useState(true);
   const [moreLoading, setMoreLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -109,22 +109,28 @@ const DashboardScreen = () => {
           <Text style={styles.headerText}>Holes</Text>
         </View>
   
-        {players.map((player) => {
-          const totalScore = calculateTotalScore(scoresMap[item.id], player);
-          const parThroughHolesPlayed = calculateParThroughHolesPlayed(scoresMap[item.id], item.id, player)
-          const score = (totalScore - (parThroughHolesPlayed || 0))
-          const holesPlayed = calculateHolesPlayed(scoresMap[item.id], item.id, player)
-          let grossScore = score < 1 ? `${score}` : `+${score}`;
-          if (parThroughHolesPlayed == 0) {
-            grossScore = "N/A";
-            totalPar = "N/A";
-          }
-  
+        {players.map((participant) => {
+          const isGuest = 'profile' in participant;
+          const totalScore = scoresMap[item.id].filter(score =>
+            isGuest ? score.guest === participant.id : score.player === participant.id
+          ).reduce((sum, score) => sum + (score.score || 0), 0);
+
+          const parThrough = scoresMap[item.id].filter(score =>
+            (isGuest ? score.guest === participant.id : score.player === participant.id) && score.score !== null && score.par !== null
+          ).reduce((sum, score) => sum + (score.par || 0), 0);
+
+          const holesPlayed = scoresMap[item.id].filter(score =>
+            (isGuest ? score.guest === participant.id : score.player === participant.id) && score.score !== null
+          ).length;
+
+          const gross = parThrough === 0 ? "N/A" : ((totalScore - parThrough >= 0 ? "+" : "") + (totalScore - parThrough));
+          const name = participant.username;
+
           return (
-            <View key={player.id} style={styles.tableRow}>
-              <Text style={styles.rowText}>{player.username}</Text>
-              <Text style={styles.rowText}>{totalScore}</Text>
-              <Text style={styles.rowText}>{grossScore}</Text>
+            <View key={participant.id} style={styles.tableRow}>
+              <Text style={styles.rowText}>{name}</Text>
+              <Text style={styles.rowText}>{totalScore || 0}</Text>
+              <Text style={styles.rowText}>{gross}</Text>
               <Text style={styles.rowText}>{holesPlayed}/{holes}</Text>
             </View>
           );

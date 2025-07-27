@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, ActivityIndicator, Button } from 'react-native';
 import { supabase } from '../supabase/supabaseClient';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
-import { ScoresRow, ProfilesRow } from '../types/supabase';
+import { ScoresRow, ProfilesRow, GuestsRow } from '../types/supabase';
 import { Courses } from "../utils/scoresUtils"
 import Ionicons from 'react-native-vector-icons/Ionicons'; // Import Ionicons for the friends icon
 
@@ -27,7 +27,7 @@ export const fetchRounds = async (
   setCourseHoles: (map: Record<string, number>) => void,
   setCourseClubMap: (map: Record<string, string>) => void,
   setClubNames: (map: Record<string, string>) => void,
-  setPlayersMap: (map: Record<number, ProfilesRow[]>) => void,
+  setPlayersMap: (map: Record<number, Array<ProfilesRow | GuestsRow>>) => void,
 ) => {
   setLoading(true); // Start loading
   try {
@@ -97,7 +97,7 @@ export const fetchMoreRounds = async (
   setCourseHoles: (map: Record<string, number>) => void,
   setCourseClubMap: (map: Record<string, string>) => void,
   setClubNames: (map: Record<string, string>) => void,
-  setPlayersMap: (map: Record<number, ProfilesRow[]>) => void,
+  setPlayersMap: (map: Record<number, Array<ProfilesRow | GuestsRow>>) => void,
   setItemsPerPage: (val: number) => void,
   setHasMore: (val: boolean) => void,
 ) => {
@@ -260,7 +260,7 @@ export const fetchScores = async (roundId: number): Promise<ScoresRow[]> => {
   return data as ScoresRow[];
 };
 
-export const calculateTotalScore = (scores: ScoresRow[], player: ProfilesRow | null = null): number => {
+export const calculateTotalScore = (scores: ScoresRow[], player: ProfilesRow | GuestsRow | null = null): number => {
   let player_scores: ScoresRow[] = []
   if (player) {
     player_scores = scores.filter(score => score.player === player.id)
@@ -354,7 +354,7 @@ export const fetchAllScoresAndPars = async (
 };
 
 const fetchPlayers = async (setPlayersMap: (
-  map: Record<number, ProfilesRow[]>) => void,
+  map: Record<number, Array<ProfilesRow | GuestsRow>>) => void,
   rounds: Round[]
 ) => {
   const roundIds = rounds.map(round => round.id);
@@ -362,7 +362,7 @@ const fetchPlayers = async (setPlayersMap: (
   // Fetch all scores for the given round IDs
   const { data: scoresData, error: scoresError } = await supabase
     .from('scores')
-    .select('round_id, player')
+    .select('round_id, player, guest')
     .in('round_id', roundIds);
 
   if (scoresError) {
@@ -370,14 +370,22 @@ const fetchPlayers = async (setPlayersMap: (
     return;
   }
 
-  // Build a map from round_id -> Set of player IDs
-  const roundToPlayerIds: Record<number, Set<string>> = {};
+  const roundToParticipants: Record<number, { playerIds: Set<string>, guestIds: Set<string> }> = {};
   const allPlayerIdsSet = new Set<string>();
+  const allGuestIdsSet = new Set<string>();
 
-  scoresData?.forEach(({ round_id, player }) => {
-    if (!roundToPlayerIds[round_id]) roundToPlayerIds[round_id] = new Set();
-    roundToPlayerIds[round_id].add(player);
-    allPlayerIdsSet.add(player);
+  scoresData?.forEach(({ round_id, player, guest }) => {
+    if (!roundToParticipants[round_id]) {
+      roundToParticipants[round_id] = { playerIds: new Set(), guestIds: new Set() };
+    }
+    if (player) {
+      roundToParticipants[round_id].playerIds.add(player);
+      allPlayerIdsSet.add(player);
+    }
+    if (guest) {
+      roundToParticipants[round_id].guestIds.add(guest);
+      allGuestIdsSet.add(guest);
+    }
   });
 
   const allPlayerIds = Array.from(allPlayerIdsSet);
@@ -386,7 +394,12 @@ const fetchPlayers = async (setPlayersMap: (
   const { data: profilesData, error: profilesError } = await supabase
     .from('profiles')
     .select('*')
-    .in('id', allPlayerIds);
+    .in('id', Array.from(allPlayerIdsSet));
+
+  const { data: guestsData, error: guestsError } = await supabase
+    .from('guests')
+    .select('*')
+    .in('id', Array.from(allGuestIdsSet));
 
   if (profilesError) {
     console.error('Error fetching profiles:', profilesError);
@@ -394,19 +407,27 @@ const fetchPlayers = async (setPlayersMap: (
   }
 
   // Map player ID to profile
-  const profileMap: Record<string, ProfilesRow> = {};
+  const playersMap: Record<string, ProfilesRow> = {};
   profilesData?.forEach(profile => {
-    profileMap[profile.id] = profile;
+    playersMap[profile.id] = profile;
   });
 
-  // Build final playersMap: round_id -> [ProfilesRow]
-  const playersMap: Record<number, ProfilesRow[]> = {};
-  for (const roundId of roundIds) {
-    const playerIds = Array.from(roundToPlayerIds[roundId] || []);
-    playersMap[roundId] = playerIds.map(id => profileMap[id]).filter(Boolean);
+  const guestsMap: Record<string, GuestsRow> = {};
+  guestsData?.forEach(guest => {
+    guestsMap[guest.id] = { ...guest};
+  });
+  const participantsMap: Record<number, Array<ProfilesRow | GuestsRow>> = {};
+
+  for (const roundId of rounds.map(r => r.id)) {
+    const playerIds = Array.from(roundToParticipants[roundId]?.playerIds || []);
+    const guestIds = Array.from(roundToParticipants[roundId]?.guestIds || []);
+    participantsMap[roundId] = [
+      ...playerIds.map(id => playersMap[id]).filter(Boolean),
+      ...guestIds.map(id => guestsMap[id]).filter(Boolean)
+    ];
   }
 
-  setPlayersMap(playersMap);
+  setPlayersMap(participantsMap);
 };
 
 

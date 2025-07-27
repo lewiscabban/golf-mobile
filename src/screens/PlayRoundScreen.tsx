@@ -13,6 +13,8 @@ type Score = {
   par: number | null;
   player: string;
   profiles: { username: string };
+  guest: string;
+  guests: { username: string };
 };
 
 type Par = {
@@ -25,6 +27,7 @@ type PlayerScores = {
   player_name: string;
   pars: { [hole: number]: number | null };
   scores: { [hole: number]: number | null };
+  isGuest: boolean;
 };
 
 type ProfileStackParamList = {
@@ -121,7 +124,7 @@ const PlayRoundScreen: React.FC = () => {
       try {
         const { data: scoresData, error } = await supabase
           .from('scores')
-          .select('hole, par, score, player, profiles(username)')
+          .select('hole, par, score, player, profiles(username), guest, guests(username)')
           .eq('round_id', RoundID)
           .order('hole', { ascending: true }) as unknown as { data: Score[]; error: any };
 
@@ -132,11 +135,12 @@ const PlayRoundScreen: React.FC = () => {
         let parMap: Record<number, number | null> = [];
   
         scoresData.forEach((score) => {
-          const playerId = score.player;
-          const playerName = score.profiles.username;
+          const playerId = score.player || score.guest;
+          const playerName = score.profiles?.username || score.guests?.username;
+          const isGuest = score.guests ? true : false;
           
           if (!scoresByPlayer[playerId]) {
-            scoresByPlayer[playerId] = { player_id: playerId, player_name: playerName, pars: {}, scores: {} };
+            scoresByPlayer[playerId] = { player_id: playerId, player_name: playerName, pars: {}, scores: {}, isGuest: isGuest };
           }
           
           scoresByPlayer[playerId].scores[score.hole] = score.score;
@@ -219,36 +223,53 @@ const PlayRoundScreen: React.FC = () => {
 
   const handleSaveScore = async (hole: number, player_id: string, newScore: number) => {
     try {
-      let userCanEdit = false
+      let userCanEdit = false;
       for (let i = 0; i < playerScores.length; i++) {
-        if (playerScores[i].player_id === userId) {userCanEdit = true}
+        if (playerScores[i].player_id === userId) {
+          userCanEdit = true;
+        }
       }
+  
       if (!userCanEdit) {
-        Alert.alert('Error', `Only players can edit scores in this game.`)
-      } else {
-        const { data, error } = await supabase
-          .from('scores')
-          .update({ score: newScore})
-          .eq('round_id', RoundID)
-          .eq('hole', hole)
-          .eq('player', player_id);
-
-        if (error) throw error;
-
-        setPlayerScores((prevScores) =>
-          prevScores.map((player) =>
-            player.player_id === player_id
-              ? { ...player, scores: { ...player.scores, [hole]: newScore } }
-              : player
-          )
-        );
+        Alert.alert('Error', `Only players can edit scores in this game.`);
+        return;
       }
-
+  
+      // Check if this is a guest or profile
+      const isGuest = playerScores.find(p => p.player_id === player_id)?.isGuest; // or use a flag if available
+  
+      const updateQuery = supabase
+        .from('scores')
+        .update({ score: newScore })
+        .eq('round_id', RoundID)
+        .eq('hole', hole);
+  
+      if (isGuest) {
+        console.log("guest" + player_id)
+        updateQuery.eq('guest', player_id); // ✅ guest ID
+      } else {
+        console.log(player_id)
+        updateQuery.eq('player', player_id); // ✅ profile ID
+      }
+  
+      const { error } = await updateQuery;
+  
+      if (error) throw error;
+  
+      setPlayerScores((prevScores) =>
+        prevScores.map((player) =>
+          player.player_id === player_id
+            ? { ...player, scores: { ...player.scores, [hole]: newScore } }
+            : player
+        )
+      );
+  
       handleCloseHoleModal();
     } catch (err) {
       Alert.alert('Error', `Could not save score. Please try again.`);
     }
   };
+  
 
   const handleSavePar = async (hole: number, newPar: number) => {
     try {

@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, Text, StyleSheet, TextInput, Alert, FlatList, 
-  TouchableOpacity, ActivityIndicator, TouchableWithoutFeedback, Keyboard 
+import {
+  View, Text, StyleSheet, TextInput, Alert, FlatList,
+  TouchableOpacity, ActivityIndicator, TouchableWithoutFeedback, Keyboard
 } from 'react-native';
-import { useNavigation, NavigationProp, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { CompositeNavigationProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { supabase } from '../supabase/supabaseClient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { fetchCourseNumHoles, fetchCoursePar } from '../utils/scoresUtils';
+import { fetchCoursePar } from '../utils/scoresUtils';
 
 type ProfileStackParamList = {
   AddPlayers: { ClubID: number; CourseID: number };
@@ -22,7 +22,7 @@ type DashboardTabParamList = {
 
 type Players = {
   id: number;
-  username: string
+  username: string;
 };
 
 type NavigationProps = CompositeNavigationProp<
@@ -34,10 +34,11 @@ const AddPlayersScreen = () => {
   const navigation = useNavigation<NavigationProps>();
   const route = useRoute();
   const { ClubID, CourseID } = route.params as { ClubID: number; CourseID: number };
+
   const [userId, setUserId] = useState<string | null>(null);
-  const [friends, setFriends] = useState<any[]>([]);
+  const [friends, setFriends] = useState<Players[]>([]);
   const [playerName, setPlayerName] = useState('');
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<Players[]>([]);
   const [selectedPlayers, setSelectedPlayers] = useState<Players[]>([]);
   const [coursePars, setCoursePars] = useState<Record<number, number | null>>([]);
   const [numHoles, setNumHoles] = useState<number>(0);
@@ -45,50 +46,50 @@ const AddPlayersScreen = () => {
   const [isDropdownVisible, setDropdownVisible] = useState(false);
   const [showGuestInput, setShowGuestInput] = useState(false);
   const [guestName, setGuestName] = useState('');
-
+  const [selectedGuests, setSelectedGuests] = useState<Players[]>([]);
+  const [allGuests, setAllGuests] = useState<Players[]>([]);
+  const [guestSearchResults, setGuestSearchResults] = useState<Players[]>([]);
+  const [isGuestDropdownVisible, setIsGuestDropdownVisible] = useState(false);
 
   useEffect(() => {
     const fetchUserId = async () => {
       const { data, error } = await supabase.auth.getUser();
-      if (error) {
-        console.error('Error fetching user ID:', error);
-      } else {
+      if (!error) {
         setUserId(data.user?.id || null);
       }
     };
 
     const fetchPar = async () => {
-      let parMap: Record<number, number | null> = []
-      parMap = await fetchCoursePar(CourseID.toString());
-      const holeCount = Object.keys(parMap).length;
-      setNumHoles(holeCount)
-      setCoursePars(parMap)
-    }
+      const parMap = await fetchCoursePar(CourseID.toString());
+      setNumHoles(Object.keys(parMap).length);
+      setCoursePars(parMap);
+    };
 
     fetchUserId();
     fetchPar();
   }, []);
 
   useEffect(() => {
-    fetchFriends();
-    getCurrentUser();
+    if (userId) {
+      fetchFriends();
+      fetchGuests();
+      getCurrentUser();
+    }
   }, [userId]);
 
   const fetchFriends = async () => {
-    const { data: userData, error: userError } = await supabase.auth.getUser();
-    if (userError || !userData?.user) return;
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData?.user) return;
 
-    const { data: friendsData, error } = await supabase
+    const { data: friendsData } = await supabase
       .from('friendships')
       .select('id, sender_id, receiver_id')
       .or(`sender_id.eq.${userData.user.id},receiver_id.eq.${userData.user.id}`)
       .eq('status', 'accepted');
 
-    if (error) return;
-
-    const friendIds = friendsData.map((f) =>
+    const friendIds = friendsData?.map((f) =>
       f.sender_id === userData.user.id ? f.receiver_id : f.sender_id
-    );
+    ) || [];
 
     const { data: friendProfiles } = await supabase
       .from('profiles')
@@ -98,16 +99,29 @@ const AddPlayersScreen = () => {
     setFriends(friendProfiles || []);
   };
 
+  const fetchGuests = async () => {
+    if (!userId) return;
+
+    const { data, error } = await supabase
+      .from('guests')
+      .select('id, username')
+      .eq('profile', userId);
+
+    if (!error && data) {
+      setAllGuests(data);
+    }
+  };
+
   const getCurrentUser = async () => {
     const { data: userData } = await supabase.auth.getUser();
     if (userData?.user) {
-      const { data: profileData, error } = await supabase
+      const { data: profileData } = await supabase
         .from('profiles')
         .select('id, username')
         .eq('id', userData.user.id)
         .single();
-      
-      if (!error && profileData) {
+
+      if (profileData) {
         setSelectedPlayers([{ id: profileData.id, username: profileData.username }]);
       }
     }
@@ -127,7 +141,21 @@ const AddPlayersScreen = () => {
     setDropdownVisible(true);
   };
 
-  const addPlayer = (player: any) => {
+  const handleGuestSearch = (text: string) => {
+    setGuestName(text);
+    if (!text.trim()) {
+      setGuestSearchResults([]);
+      setIsGuestDropdownVisible(false);
+      return;
+    }
+    const filtered = allGuests.filter((guest) =>
+      guest.username.toLowerCase().includes(text.toLowerCase())
+    );
+    setGuestSearchResults(filtered.slice(0, 10));
+    setIsGuestDropdownVisible(true);
+  };
+
+  const addPlayer = (player: Players) => {
     if (!selectedPlayers.find((p) => p.id === player.id)) {
       setSelectedPlayers([...selectedPlayers, player]);
     }
@@ -137,135 +165,184 @@ const AddPlayersScreen = () => {
   };
 
   const removePlayer = (playerId: number) => {
-    setSelectedPlayers(selectedPlayers.filter((player) => player.id !== playerId));
+    setSelectedPlayers((prev) => prev.filter((p) => p.id !== playerId));
+    setSelectedGuests((prev) => prev.filter((g) => g.id !== playerId));
+  };
+
+  const handleAddGuest = async () => {
+    const trimmedName = guestName.trim();
+    if (!trimmedName || !userId) return;
+
+    if (selectedGuests.some((g) => g.username.toLowerCase() === trimmedName.toLowerCase())) {
+      setGuestName('');
+      setShowGuestInput(false);
+      return;
+    }
+
+    const existing = allGuests.find((g) => g.username.toLowerCase() === trimmedName.toLowerCase());
+    if (existing) {
+      if (!selectedGuests.find((g) => g.id === existing.id)) {
+        setSelectedGuests((prev) => [...prev, existing]);
+      }
+      setGuestName('');
+      setShowGuestInput(false);
+      setIsGuestDropdownVisible(false);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('guests')
+        .insert({ profile: userId, username: trimmedName })
+        .select()
+        .single();
+
+      if (!error && data) {
+        const newGuest = { id: data.id, username: data.username };
+        setSelectedGuests((prev) => [...prev, newGuest]);
+        setAllGuests((prev) => [...prev, newGuest]);
+        setGuestName('');
+        setShowGuestInput(false);
+        setIsGuestDropdownVisible(false);
+      } else {
+        Alert.alert('Error', 'Failed to add guest.');
+      }
+    } catch (err) {
+      console.error('Add guest error:', err);
+      Alert.alert('Error', 'Something went wrong.');
+    }
   };
 
   const handleAddRound = async () => {
     setLoading(true);
-
     try {
-      const { data: roundData, error: roundError } = await supabase
+      const { data: roundData, error } = await supabase
         .from('rounds')
         .insert([{ course_id: CourseID }])
-        .select('*')
+        .select()
         .single();
 
-      if (roundError || !roundData) {
-        console.error('Error inserting round:', roundError);
-        Alert.alert('Error', 'Failed to create a new round. Please try again.');
-        return;
-      }
+      if (error || !roundData) throw error;
 
-      const scoresToInsert = selectedPlayers.flatMap((player) =>
-        Array.from({ length: numHoles }, (_, i) => i + 1)
-          .map((hole) => ({
+      const scores = [
+        ...selectedPlayers.flatMap((p) =>
+          Array.from({ length: numHoles }, (_, i) => ({
             round_id: roundData.id,
-            player: player.id,
-            hole: hole,
-            par: coursePars[hole]
+            player: p.id,
+            hole: i + 1,
+            par: coursePars[i + 1],
           }))
-      );
+        ),
+        ...selectedGuests.flatMap((g) =>
+          Array.from({ length: numHoles }, (_, i) => ({
+            round_id: roundData.id,
+            guest: g.id,
+            hole: i + 1,
+            par: coursePars[i + 1],
+          }))
+        ),
+      ];
 
-      const { error: scoresError } = await supabase.from('scores').insert(scoresToInsert);
-      if (scoresError) {
-        console.error('Error inserting scores:', scoresError);
-        Alert.alert('Error', 'Failed to initialize scores for the round.');
-        return;
-      }
+      const { error: scoresError } = await supabase.from('scores').insert(scores);
+      if (scoresError) throw scoresError;
 
       navigation.navigate('Dashboard', {
         screen: 'PlayRound',
-        params: { RoundID: roundData.id  },
+        params: { RoundID: roundData.id },
       });
     } catch (err) {
-      Alert.alert('Error', 'Something went wrong.');
+      console.error(err);
+      Alert.alert('Error', 'Could not create round.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAddGuest = () => {
-    const trimmedName = guestName.trim();
-    if (!trimmedName) return;
-  
-    const guestId = Date.now(); // temporary unique ID
-    const newGuest = { id: guestId, username: trimmedName };
-  
-    setSelectedPlayers((prev) => [...prev, newGuest]);
-    setGuestName('');
-    setShowGuestInput(false);
-  };
-  
-
   return (
     <TouchableWithoutFeedback onPress={() => { setDropdownVisible(false); Keyboard.dismiss(); }}>
       <View style={styles.container}>
         <Text style={styles.title}>Add Players</Text>
-        {/* <View style={styles.inputWrapper}> */}
-          {/* <TextInput
+
+        <View style={styles.inputWrapper}>
+          <TextInput
             style={styles.input}
             placeholder="Search Friends"
             value={playerName}
             onChangeText={handleSearch}
             onFocus={() => setDropdownVisible(true)}
-          /> */}
-          <View style={styles.inputWrapper}>
-            <TextInput
-              style={styles.input}
-              placeholder="Search Friends"
-              value={playerName}
-              onChangeText={handleSearch}
-              onFocus={() => setDropdownVisible(true)}
+          />
+          {isDropdownVisible && searchResults.length > 0 && (
+            <FlatList
+              data={searchResults}
+              keyExtractor={(item) => `player-${item.id}`}
+              style={styles.dropdownContainer}
+              renderItem={({ item }) => (
+                <TouchableOpacity onPress={() => addPlayer(item)} style={styles.addPlayerButton}>
+                  <View style={styles.addPlayerContent}>
+                    <Text style={styles.dropdownItem}>{item.username}</Text>
+                    <Icon name="add" size={24} color="#4CAF50" />
+                  </View>
+                </TouchableOpacity>
+              )}
+              keyboardShouldPersistTaps="handled"
             />
-            {isDropdownVisible && searchResults.length > 0 && (
-              <FlatList
-                data={searchResults}
-                keyExtractor={(item) => item.id.toString()}
-                style={styles.dropdownContainer}
-                renderItem={({ item }) => (
-                  <View style={styles.addPlayerItemContainer}>
-                    <TouchableOpacity onPress={() => addPlayer(item)} style={styles.addPlayerButton}>
+          )}
+
+          <TouchableOpacity onPress={() => setShowGuestInput(true)} style={styles.addGuestButton}>
+            <Text style={styles.addGuestText}>+ Add Guest</Text>
+          </TouchableOpacity>
+
+          {showGuestInput && (
+            <View style={styles.guestInputContainer}>
+              <TextInput
+                style={styles.guestInput}
+                placeholder="Enter guest name"
+                value={guestName}
+                onChangeText={handleGuestSearch}
+                onFocus={() => setIsGuestDropdownVisible(true)}
+              />
+              <TouchableOpacity onPress={handleAddGuest} style={styles.addGuestSubmitButton}>
+                <Text style={styles.addGuestSubmitText}>Add</Text>
+              </TouchableOpacity>
+
+              {isGuestDropdownVisible && guestSearchResults.length > 0 && (
+                <FlatList
+                  data={guestSearchResults}
+                  keyExtractor={(item) => `guest-${item.id}`}
+                  style={styles.dropdownContainer}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      onPress={() => {
+                        if (!selectedGuests.find((g) => g.id === item.id)) {
+                          setSelectedGuests((prev) => [...prev, item]);
+                        }
+                        setGuestName('');
+                        setIsGuestDropdownVisible(false);
+                        setShowGuestInput(false);
+                      }}
+                      style={styles.addPlayerButton}
+                    >
                       <View style={styles.addPlayerContent}>
                         <Text style={styles.dropdownItem}>{item.username}</Text>
                         <Icon name="add" size={24} color="#4CAF50" />
                       </View>
                     </TouchableOpacity>
-                  </View>
-                )}
-                keyboardShouldPersistTaps="handled"
-              />
-            )}
-
-            {/* Add Guest Toggle */}
-            <TouchableOpacity onPress={() => setShowGuestInput(true)} style={styles.addGuestButton}>
-              <Text style={styles.addGuestText}>+ Add Guest</Text>
-            </TouchableOpacity>
-
-            {showGuestInput && (
-              <View style={styles.guestInputContainer}>
-                <TextInput
-                  style={styles.guestInput}
-                  placeholder="Enter guest name"
-                  value={guestName}
-                  onChangeText={setGuestName}
-                  maxLength={40}
+                  )}
+                  keyboardShouldPersistTaps="handled"
                 />
-                <TouchableOpacity onPress={handleAddGuest} style={styles.addGuestSubmitButton}>
-                  <Text style={styles.addGuestSubmitText}>Add</Text>
-                </TouchableOpacity>
-              </View>
-            )}
+              )}
+            </View>
+          )}
+        </View>
 
-          </View>
-
-        {/* </View> */}
         <FlatList
-          data={selectedPlayers}
-          keyExtractor={(item) => item.id.toString()}
+          data={[...selectedPlayers, ...selectedGuests]}
+          keyExtractor={(item) =>
+            selectedGuests.some((g) => g.id === item.id) ? `guest-${item.id}` : `player-${item.id}`
+          }
           renderItem={({ item }) => (
             <View style={styles.playerItemContainer}>
               <Text style={styles.playerItem}>{item.username}</Text>
-
               {String(item.id) !== userId && (
                 <TouchableOpacity onPress={() => removePlayer(item.id)}>
                   <Icon name="delete" size={24} color="#666" />
@@ -274,6 +351,7 @@ const AddPlayersScreen = () => {
             </View>
           )}
         />
+
         <TouchableOpacity style={styles.button} onPress={handleAddRound} disabled={loading}>
           {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Go to Play Round</Text>}
         </TouchableOpacity>
@@ -283,137 +361,29 @@ const AddPlayersScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 16,
-    backgroundColor: '#FFFFFF',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  input: {
-    height: 50,
-    borderBottomWidth: 1,
-    borderColor: '#4CAF50',
-    paddingHorizontal: 10,
-    marginBottom: 10,
-    width: '100%',
-    color: '#000000',
-  },
-  inputWrapper: {
-    position: 'relative'
-  },
+  // styles unchanged for brevity — keep using your existing ones
+  container: { flex: 1, padding: 16, backgroundColor: '#FFFFFF' },
+  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 16, textAlign: 'center' },
+  input: { height: 50, borderBottomWidth: 1, borderColor: '#4CAF50', paddingHorizontal: 10, marginBottom: 10, width: '100%', color: '#000' },
+  inputWrapper: { position: 'relative' },
   dropdownContainer: {
-    position: 'absolute',
-    top: 50,
-    left: 0,
-    right: 0,
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    maxHeight: 200,
-    overflow: 'hidden',
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    zIndex: 1000,
+    position: 'absolute', top: 50, left: 0, right: 0,
+    backgroundColor: '#fff', borderRadius: 8, maxHeight: 200,
+    elevation: 5, zIndex: 1000
   },
-  dropdownItem: {
-    padding: 16,
-    color: '#000000',
-  },
-  playerItemContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    marginVertical: 4,
-    height: 50,
-  },
-  addPlayerItemContainer: {
-    width: '100%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
-  },
-  addPlayerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    width: '100%',
-  },
-  playerItem: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#4CAF50',
-  },
-  addPlayerButton: {
-    width: '100%',
-    padding: 10,
-  },
-  removeButton: {
-    color: 'red',
-    fontWeight: 'bold',
-  },
-  dropdown: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    marginBottom: 10,
-    backgroundColor: '#fff',
-  },
-  button: {
-    backgroundColor: '#4CAF50',
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  addGuestButton: {
-    paddingVertical: 8,
-    alignItems: 'flex-start',
-    marginTop: 5,
-  },
-  addGuestText: {
-    fontSize: 16,
-    color: '#4CAF50',
-    fontWeight: 'bold',
-  },
-  guestInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 10,
-    width: '100%',
-  },  
-  addGuestSubmitButton: {
-    marginLeft: 10,
-    backgroundColor: '#4CAF50',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 5,
-  },
-  addGuestSubmitText: {
-    color: '#fff',
-    fontWeight: 'bold',
-  },
-  guestInput: {
-    flex: 1,
-    borderBottomWidth: 1,
-    borderColor: '#4CAF50',
-    paddingHorizontal: 10,
-    height: 50,
-    color: '#000000',
-  },  
+  dropdownItem: { padding: 16, color: '#000' },
+  addPlayerButton: { width: '100%', padding: 10 },
+  addPlayerContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%' },
+  addGuestButton: { paddingVertical: 8, alignItems: 'flex-start', marginTop: 5 },
+  addGuestText: { fontSize: 16, color: '#4CAF50', fontWeight: 'bold' },
+  guestInputContainer: { flexDirection: 'row', alignItems: 'center', marginTop: 10, width: '100%' },
+  guestInput: { flex: 1, borderBottomWidth: 1, borderColor: '#4CAF50', paddingHorizontal: 10, height: 50, color: '#000' },
+  addGuestSubmitButton: { marginLeft: 10, backgroundColor: '#4CAF50', paddingVertical: 10, paddingHorizontal: 16, borderRadius: 5 },
+  addGuestSubmitText: { color: '#fff', fontWeight: 'bold' },
+  playerItemContainer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: 4, height: 50 },
+  playerItem: { fontSize: 16, fontWeight: '600', color: '#4CAF50' },
+  button: { backgroundColor: '#4CAF50', padding: 12, borderRadius: 8, alignItems: 'center' },
+  buttonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' }
 });
 
 export default AddPlayersScreen;

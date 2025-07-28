@@ -12,10 +12,16 @@ import ResultsScreen from '../screens/ResultsScreen';
 import FriendsScreen from '../screens/FriendsScreen';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { HeaderTitle } from '@react-navigation/elements';
+import CrewDashboardScreen from '../screens/CrewDashboardScreen';
+import CrewScreen from '../screens/CrewScreen';
+import JoinCrewScreen from '../screens/JoinCrewScreen';
+import CreateCrewScreen from '../screens/CreateCrewScreen';
+import ManageCrewScreen from '../screens/ManageCrewScreen';
 
 const Tab = createBottomTabNavigator();
 const PlayStack = createNativeStackNavigator();
 const DashboardStack = createNativeStackNavigator();
+const CrewStack = createNativeStackNavigator();
 const SettingsStack = createNativeStackNavigator();
 
 // Define the types for your navigation stack
@@ -76,7 +82,25 @@ const DashboardStackScreen = () => {
         />
       </DashboardStack.Navigator>
     );
-};  
+};
+
+const CrewStackScreen = () => {
+  return (
+    <PlayStack.Navigator
+      screenOptions={{
+        headerBackButtonDisplayMode: 'minimal',
+        headerShadowVisible: false,
+        contentStyle:{ backgroundColor: '#fff'}
+      }}
+    >
+      <CrewStack.Screen name="Crew" component={CrewScreen} options={() => ({title: "Pocket Caddie"})} />
+      <CrewStack.Screen name="CrewDashboard" component={CrewDashboardScreen} options={() => ({title: "Pocket Caddie"})} />
+      <CrewStack.Screen name="JoinCrew" component={JoinCrewScreen} />
+      <CrewStack.Screen name="CreateCrew" component={CreateCrewScreen} />
+      <CrewStack.Screen name="ManageCrew" component={ManageCrewScreen} />
+    </PlayStack.Navigator>
+  );
+};
 
 const SettingsStackScreen = () => {
     return (
@@ -133,6 +157,11 @@ const AppTabs = () => {
             });
           },
         })}
+      />
+      <Tab.Screen
+        name="Crew"
+        component={CrewStackScreen}
+        options={{ headerShown: false }}
       />
       <Tab.Screen
         name="Settings"

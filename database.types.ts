@@ -528,6 +528,35 @@ export type Database = {
         }
         Relationships: []
       }
+      crews: {
+        Row: {
+          created_at: string
+          crew_name: string
+          id: number
+          leader: string
+        }
+        Insert: {
+          created_at?: string
+          crew_name: string
+          id?: number
+          leader: string
+        }
+        Update: {
+          created_at?: string
+          crew_name?: string
+          id?: number
+          leader?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crews_leader_fkey"
+            columns: ["leader"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       friendships: {
         Row: {
           created_at: string | null
@@ -683,6 +712,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          crew: number | null
           first_name: string
           id: string
           last_name: string
@@ -691,6 +721,7 @@ export type Database = {
           username: string
         }
         Insert: {
+          crew?: number | null
           first_name: string
           id: string
           last_name: string
@@ -699,6 +730,7 @@ export type Database = {
           username: string
         }
         Update: {
+          crew?: number | null
           first_name?: string
           id?: string
           last_name?: string
@@ -706,7 +738,15 @@ export type Database = {
           updated_at?: string | null
           username?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_crew_fkey"
+            columns: ["crew"]
+            isOneToOne: false
+            referencedRelation: "crews"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       rounds: {
         Row: {
